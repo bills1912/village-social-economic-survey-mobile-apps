@@ -33,7 +33,7 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
   // Keterangan
   final _keteranganCtrl = TextEditingController();
 
-  // Waktu wawancara – diisi otomatis saat tombol ditekan
+  // Waktu wawancara
   DateTime? _waktuMulai;
   DateTime? _waktuAkhir;
 
@@ -62,6 +62,30 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
     'r_205': null, 'r_206': '', 'r_207': null, 'r_207_usia': null,
     'r_208': '', 'r_209': null, 'r_210': null,
     'r_211': <String>[], 'r_212': null, 'r_300_pekerjaan': null,
+    // Data pekerjaan detail
+    'r_301_usaha_buruh_pekerjaBebas': null,
+    // Usaha
+    'r_301': null,
+    'r_302_a': '', 'r_302_b': null, 'r_302_c': null,
+    'r_302_d': '', 'r_302_e': '', 'r_302_f': '', 'r_302_g': '',
+    'r_303_a': '', 'r_303_b': null, 'r_303_c': '', 'r_303_d': '', 'r_303_e': '',
+    'r_304_a': null, 'r_304_b': '', 'r_304_c': '', 'r_304_d': '',
+    'r_305_a': '', 'r_305_b': '', 'r_305_c': '', 'r_305_d': '', 'r_305_e': '', 'r_305_f': '',
+    // Pekerjaan tambahan usaha
+    'r_306': null, 'r_301_tambah': null,
+    'r_302_a_tambah': '', 'r_302_b_tambah': null, 'r_302_c_tambah': null,
+    'r_302_d_tambah': '', 'r_302_e_tambah': '', 'r_302_f_tambah': '', 'r_302_g_tambah': '',
+    'r_303_a_tambah': '', 'r_303_b_tambah': null, 'r_303_c_tambah': '', 'r_303_d_tambah': '', 'r_303_e_tambah': '',
+    'r_304_a_tambah': null, 'r_304_b_tambah': '', 'r_304_c_tambah': '', 'r_304_d_tambah': '',
+    'r_305_a_tambah': '', 'r_305_b_tambah': '', 'r_305_c_tambah': '', 'r_305_d_tambah': '', 'r_305_e_tambah': '', 'r_305_f_tambah': '',
+    // Buruh
+    'r_307': null, 'r_308_a': null, 'r_308_b': '', 'r_309_a': null, 'r_309_b': '',
+    'r_310': null, 'r_307_tambah': null,
+    'r_308_a_tambah': null, 'r_308_b_tambah': '', 'r_309_a_tambah': null, 'r_309_b_tambah': '',
+    // Pekerja Bebas
+    'r_311': null, 'r_312_a': null, 'r_312_b': '', 'r_313_a': null, 'r_313_b': '',
+    'r_314': null, 'r_311_tambah': null,
+    'r_312_a_tambah': null, 'r_312_b_tambah': '', 'r_313_a_tambah': null, 'r_313_b_tambah': '',
   };
 
   void _populateFromExisting() {
@@ -214,7 +238,6 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
   void _prev() { if (_currentStep > 0) setState(() => _currentStep--); }
 
   Future<void> _submit() async {
-    // Auto-catat waktu akhir jika belum ditekan
     if (_waktuAkhir == null) setState(() => _waktuAkhir = DateTime.now());
     await _save();
   }
@@ -347,7 +370,6 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(children: [
-        // Identitas KK
         _section('Identitas Kepala Keluarga', Icons.home_outlined, [
           FormInput(
             label: 'Nomor KK *',
@@ -374,19 +396,20 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
             onChanged: (v) => setState(() => _statusKk = v),
           ),
           const SizedBox(height: 12),
-          FormDropdown(
-            label: 'Sudah Urus KK?',
-            value: _sudahUrusKk,
-            options: const [
-              {'value': '1', 'label': 'Sudah'},
-              {'value': '2', 'label': 'Belum'},
-            ],
-            onChanged: (v) => setState(() => _sudahUrusKk = v),
-          ),
+          if (_statusKk == '2' || _statusKk == '3') ...[
+            FormDropdown(
+              label: 'Sudah Urus KK?',
+              value: _sudahUrusKk,
+              options: const [
+                {'value': '1', 'label': 'Sudah'},
+                {'value': '2', 'label': 'Belum'},
+              ],
+              onChanged: (v) => setState(() => _sudahUrusKk = v),
+            ),
+          ],
         ]),
         const SizedBox(height: 16),
 
-        // Waktu Mulai
         _section('Waktu Wawancara', Icons.schedule_outlined, [
           _waktuButton(
             label: 'Catat Waktu Mulai',
@@ -407,7 +430,6 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
         ]),
         const SizedBox(height: 16),
 
-        // Lokasi
         _section('Lokasi Rumah', Icons.location_on_outlined, [
           SizedBox(
             width: double.infinity,
@@ -439,7 +461,6 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
     );
   }
 
-  // Tombol waktu (mulai / akhir)
   Widget _waktuButton({
     required String label,
     required IconData icon,
@@ -453,9 +474,7 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: recorded != null
-              ? color.withOpacity(0.08)
-              : Colors.white,
+          color: recorded != null ? color.withOpacity(0.08) : Colors.white,
           border: Border.all(
             color: recorded != null ? color : Colors.grey[300]!,
             width: recorded != null ? 1.5 : 1,
@@ -466,26 +485,19 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
           children: [
             Container(
               width: 40, height: 40,
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.12),
-                shape: BoxShape.circle,
-              ),
+              decoration: BoxDecoration(color: color.withOpacity(0.12), shape: BoxShape.circle),
               child: Icon(icon, color: color, size: 22),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: recorded != null
                   ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(label, style: const TextStyle(
-                    fontSize: 11, color: AppTheme.textSecondary)),
+                Text(label, style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
                 Text(_fmtDateTime(recorded),
-                    style: TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.bold, color: color)),
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color)),
               ])
                   : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(label, style: const TextStyle(
-                    fontSize: 13, fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimary)),
+                Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
                 const Text('Tekan untuk mencatat waktu sekarang',
                     style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
               ]),
@@ -508,16 +520,11 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Mini map preview (static tile)
         ClipRRect(
           borderRadius: BorderRadius.circular(10),
           child: SizedBox(
             height: 150,
-            child: _MapWidget(
-              lat: _mapLat!, lng: _mapLng!,
-              interactive: false,
-              onPicked: (_, __) {},
-            ),
+            child: _MapWidget(lat: _mapLat!, lng: _mapLng!, interactive: false, onPicked: (_, __) {}),
           ),
         ),
         const SizedBox(height: 8),
@@ -535,9 +542,7 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
               onPressed: _showPeta,
               icon: const Icon(Icons.open_in_full, size: 14),
               label: const Text('Perluas', style: TextStyle(fontSize: 11)),
-              style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  minimumSize: const Size(0, 30)),
+              style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8), minimumSize: const Size(0, 30)),
             ),
             IconButton(
               icon: const Icon(Icons.close, size: 16, color: Colors.grey),
@@ -564,7 +569,7 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
           Icon(Icons.info_outline, size: 16, color: AppTheme.primaryBlue),
           SizedBox(width: 8),
           Expanded(
-            child: Text('Semua isian bersifat opsional kecuali Nomor KK di langkah sebelumnya.',
+            child: Text('Isian bersifat opsional kecuali Nomor KK. Detail pekerjaan muncul jika status pekerjaan "Sudah Bekerja".',
                 style: TextStyle(fontSize: 12, color: AppTheme.primaryBlue)),
           ),
         ]),
@@ -598,21 +603,16 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
           title: Row(children: [
             Container(
               width: 32, height: 32,
-              decoration: BoxDecoration(
-                color: AppTheme.primaryBlue.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
+              decoration: BoxDecoration(color: AppTheme.primaryBlue.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
               child: Center(child: Text('${idx+1}',
-                  style: const TextStyle(color: AppTheme.primaryBlue,
-                      fontWeight: FontWeight.bold, fontSize: 13))),
+                  style: const TextStyle(color: AppTheme.primaryBlue, fontWeight: FontWeight.bold, fontSize: 13))),
             ),
             const SizedBox(width: 10),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(nama.isEmpty ? 'Anggota ${idx+1}' : nama,
                   style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
               if (kel != null)
-                Text(_kelLabel(kel), style: const TextStyle(
-                    fontSize: 11, color: AppTheme.textSecondary)),
+                Text(_kelLabel(kel), style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
             ])),
           ]),
           trailing: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -641,9 +641,17 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
   }
 
   Widget _anggotaFields(Map<String, dynamic> data) {
+    final bool sudahBekerja = data['r_300_pekerjaan'] == '2';
+    final bool berdomisili = data['r_210'] == '1';
+    final int? usia = data['r_207_usia'] as int?;
+    final bool usiaKerja = (usia ?? 0) >= 15;
+    final bool tampilPekerjaan = berdomisili && usiaKerja && sudahBekerja;
+
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       const Divider(height: 1),
       const SizedBox(height: 12),
+
+      // ── Data Dasar ──
       FormInput(label: 'Nama Lengkap', hint: 'Nama sesuai KTP',
           initialValue: data['r_201'], onChanged: (v) => data['r_201'] = v),
       const SizedBox(height: 10),
@@ -677,7 +685,7 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
             label: 'Usia (tahun)', hint: 'Isi jika tgl lahir tidak diketahui',
             initialValue: data['r_207_usia']?.toString(),
             keyboardType: TextInputType.number,
-            onChanged: (v) => data['r_207_usia'] = int.tryParse(v ?? ''))),
+            onChanged: (v) => setState(() => data['r_207_usia'] = int.tryParse(v ?? '')))),
         const SizedBox(width: 10),
         Expanded(child: FormInput(label: 'Suku/Etnis', initialValue: data['r_208'],
             onChanged: (v) => data['r_208'] = v)),
@@ -702,8 +710,561 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
           onChanged: (v) => setState(() => data['r_300_pekerjaan'] = v)),
       const SizedBox(height: 12),
       _disabilitas(data),
+
+      // ── Detail Pekerjaan (hanya jika Sudah Bekerja + berdomisili + usia ≥15) ──
+      if (tampilPekerjaan) ...[
+        const SizedBox(height: 16),
+        _sectionHeader('Detail Pekerjaan', Icons.work_outline),
+        const SizedBox(height: 8),
+        _pekerjaanFields(data),
+      ] else if (sudahBekerja && (!berdomisili || !usiaKerja)) ...[
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: Colors.orange.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.orange.withOpacity(0.3)),
+          ),
+          child: Row(children: [
+            const Icon(Icons.info_outline, size: 14, color: Colors.orange),
+            const SizedBox(width: 8),
+            Expanded(child: Text(
+              !berdomisili
+                  ? 'Detail pekerjaan hanya untuk penduduk yang berdomisili di desa.'
+                  : 'Detail pekerjaan hanya untuk usia 15 tahun ke atas.',
+              style: const TextStyle(fontSize: 11, color: Colors.orange),
+            )),
+          ]),
+        ),
+      ],
     ]);
   }
+
+  // ─── Pekerjaan Fields ─────────────────────────────────────────────────────
+
+  Widget _pekerjaanFields(Map<String, dynamic> data) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      // Tipe: Usaha / Buruh / Pekerja Bebas
+      FormDropdown(
+        label: 'Bekerja Sebagai *',
+        value: data['r_301_usaha_buruh_pekerjaBebas'],
+        options: const [
+          {'value': '1', 'label': 'Berusaha/Pemilik Usaha'},
+          {'value': '2', 'label': 'Buruh/Pegawai'},
+          {'value': '3', 'label': 'Pekerja Bebas'},
+        ],
+        onChanged: (v) => setState(() {
+          data['r_301_usaha_buruh_pekerjaBebas'] = v;
+          // Reset sub-fields saat tipe berubah
+          data['r_301'] = null; data['r_307'] = null; data['r_311'] = null;
+        }),
+        validator: (v) => (data['r_300_pekerjaan'] == '2' && v == null)
+            ? 'Pilih tipe pekerjaan' : null,
+      ),
+
+      // ── USAHA ──────────────────────────────────────────────────────────────
+      if (data['r_301_usaha_buruh_pekerjaBebas'] == '1') ...[
+        const SizedBox(height: 12),
+        _subHeader('Sektor Usaha Utama'),
+        FormDropdown(
+          label: 'Sektor Usaha *',
+          value: data['r_301'],
+          options: const [
+            {'value': '1', 'label': 'Pertanian Padi/Palawija'},
+            {'value': '2', 'label': 'Perikanan'},
+            {'value': '3', 'label': 'Peternakan'},
+            {'value': '4', 'label': 'Lainnya'},
+          ],
+          onChanged: (v) => setState(() => data['r_301'] = v),
+          validator: (v) => (data['r_301_usaha_buruh_pekerjaBebas'] == '1' && v == null)
+              ? 'Pilih sektor usaha' : null,
+        ),
+
+        // Pertanian
+        if (data['r_301'] == '1') ...[
+          const SizedBox(height: 12),
+          _subHeader('Detail Pertanian Padi/Palawija'),
+          FormInput(label: 'Komoditas yang Diusahakan', initialValue: data['r_302_a'],
+              onChanged: (v) => data['r_302_a'] = v,
+              validator: (v) => (data['r_301'] == '1' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+          const SizedBox(height: 8),
+          FormDropdown(label: 'Jenis Lahan', value: data['r_302_b'],
+              options: const [
+                {'value': '1', 'label': 'Sawah'},
+                {'value': '2', 'label': 'Kebun'},
+                {'value': '3', 'label': 'Lahan Kering'},
+              ],
+              onChanged: (v) => setState(() => data['r_302_b'] = v),
+              validator: (v) => (data['r_301'] == '1' && v == null) ? 'Pilih jenis lahan' : null),
+          const SizedBox(height: 8),
+          FormDropdown(label: 'Status Kepemilikan Lahan', value: data['r_302_c'],
+              options: const [
+                {'value': '1', 'label': 'Milik Sendiri'},
+                {'value': '2', 'label': 'Sewa'},
+                {'value': '3', 'label': 'Bebas Sewa'},
+              ],
+              onChanged: (v) => setState(() => data['r_302_c'] = v),
+              validator: (v) => (data['r_301'] == '1' && v == null) ? 'Pilih status kepemilikan' : null),
+          const SizedBox(height: 8),
+          FormInput(label: 'Luas Lahan (m²)', initialValue: data['r_302_d'],
+              keyboardType: TextInputType.number,
+              onChanged: (v) => data['r_302_d'] = v,
+              validator: (v) => (data['r_301'] == '1' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+          const SizedBox(height: 8),
+          FormInput(label: 'Jumlah Produksi Setahun (Kg)', initialValue: data['r_302_e'],
+              keyboardType: TextInputType.number,
+              onChanged: (v) => data['r_302_e'] = v,
+              validator: (v) => (data['r_301'] == '1' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+          const SizedBox(height: 8),
+          FormInput(label: 'Nilai Produksi Setahun (Rp)', initialValue: data['r_302_f'],
+              keyboardType: TextInputType.number,
+              onChanged: (v) => data['r_302_f'] = v,
+              validator: (v) => (data['r_301'] == '1' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+          const SizedBox(height: 8),
+          FormInput(label: 'Penghasilan Bersih Setahun (Rp)', initialValue: data['r_302_g'],
+              keyboardType: TextInputType.number,
+              onChanged: (v) => data['r_302_g'] = v,
+              validator: (v) => (data['r_301'] == '1' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+        ],
+
+        // Perikanan
+        if (data['r_301'] == '2') ...[
+          const SizedBox(height: 12),
+          _subHeader('Detail Perikanan'),
+          FormInput(label: 'Luas Lahan Budidaya (m²)', initialValue: data['r_303_a'],
+              keyboardType: TextInputType.number,
+              onChanged: (v) => data['r_303_a'] = v,
+              validator: (v) => (data['r_301'] == '2' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+          const SizedBox(height: 8),
+          FormDropdown(label: 'Jenis Ikan', value: data['r_303_b'],
+              options: const [
+                {'value': '1', 'label': 'Ikan Lele'},
+                {'value': '2', 'label': 'Ikan Nila'},
+                {'value': '3', 'label': 'Ikan Gurame'},
+                {'value': '4', 'label': 'Ikan Patin'},
+                {'value': '5', 'label': 'Ikan Mas'},
+                {'value': '6', 'label': 'Lainnya'},
+              ],
+              onChanged: (v) => setState(() => data['r_303_b'] = v),
+              validator: (v) => (data['r_301'] == '2' && v == null) ? 'Pilih jenis ikan' : null),
+          const SizedBox(height: 8),
+          FormInput(label: 'Jumlah Produksi Setahun (Kg)', initialValue: data['r_303_c'],
+              keyboardType: TextInputType.number,
+              onChanged: (v) => data['r_303_c'] = v,
+              validator: (v) => (data['r_301'] == '2' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+          const SizedBox(height: 8),
+          FormInput(label: 'Nilai Produksi Setahun (Rp)', initialValue: data['r_303_d'],
+              keyboardType: TextInputType.number,
+              onChanged: (v) => data['r_303_d'] = v,
+              validator: (v) => (data['r_301'] == '2' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+          const SizedBox(height: 8),
+          FormInput(label: 'Penghasilan Bersih Setahun (Rp)', initialValue: data['r_303_e'],
+              keyboardType: TextInputType.number,
+              onChanged: (v) => data['r_303_e'] = v,
+              validator: (v) => (data['r_301'] == '2' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+        ],
+
+        // Peternakan
+        if (data['r_301'] == '3') ...[
+          const SizedBox(height: 12),
+          _subHeader('Detail Peternakan'),
+          FormDropdown(label: 'Jenis Ternak', value: data['r_304_a'],
+              options: const [
+                {'value': '1', 'label': 'Sapi'},
+                {'value': '2', 'label': 'Kambing'},
+                {'value': '3', 'label': 'Ayam'},
+                {'value': '4', 'label': 'Bebek'},
+                {'value': '5', 'label': 'Lainnya'},
+              ],
+              onChanged: (v) => setState(() => data['r_304_a'] = v),
+              validator: (v) => (data['r_301'] == '3' && v == null) ? 'Pilih jenis ternak' : null),
+          const SizedBox(height: 8),
+          FormInput(label: 'Jumlah Ternak', initialValue: data['r_304_b'],
+              keyboardType: TextInputType.number,
+              onChanged: (v) => data['r_304_b'] = v,
+              validator: (v) => (data['r_301'] == '3' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+          const SizedBox(height: 8),
+          FormInput(label: 'Nilai Produksi Setahun (Rp)', initialValue: data['r_304_c'],
+              keyboardType: TextInputType.number,
+              onChanged: (v) => data['r_304_c'] = v,
+              validator: (v) => (data['r_301'] == '3' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+          const SizedBox(height: 8),
+          FormInput(label: 'Penghasilan Bersih Setahun (Rp)', initialValue: data['r_304_d'],
+              keyboardType: TextInputType.number,
+              onChanged: (v) => data['r_304_d'] = v,
+              validator: (v) => (data['r_301'] == '3' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+        ],
+
+        // Lainnya
+        if (data['r_301'] == '4') ...[
+          const SizedBox(height: 12),
+          _subHeader('Detail Usaha Lainnya'),
+          FormInput(label: 'Nama Usaha', initialValue: data['r_305_a'],
+              onChanged: (v) => data['r_305_a'] = v,
+              validator: (v) => (data['r_301'] == '4' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+          const SizedBox(height: 8),
+          FormInput(label: 'Produk Usaha', initialValue: data['r_305_b'],
+              onChanged: (v) => data['r_305_b'] = v,
+              validator: (v) => (data['r_301'] == '4' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+          const SizedBox(height: 8),
+          FormInput(label: 'Alamat Tempat Usaha', initialValue: data['r_305_c'],
+              onChanged: (v) => data['r_305_c'] = v,
+              validator: (v) => (data['r_301'] == '4' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+          const SizedBox(height: 8),
+          FormInput(label: 'Jumlah Pekerja', initialValue: data['r_305_d'],
+              keyboardType: TextInputType.number,
+              onChanged: (v) => data['r_305_d'] = v,
+              validator: (v) => (data['r_301'] == '4' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+          const SizedBox(height: 8),
+          FormInput(label: 'Rata-Rata Omset per Bulan (Rp)', initialValue: data['r_305_e'],
+              keyboardType: TextInputType.number,
+              onChanged: (v) => data['r_305_e'] = v,
+              validator: (v) => (data['r_301'] == '4' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+          const SizedBox(height: 8),
+          FormInput(label: 'Rata-Rata Penghasilan Bersih per Bulan (Rp)', initialValue: data['r_305_f'],
+              keyboardType: TextInputType.number,
+              onChanged: (v) => data['r_305_f'] = v,
+              validator: (v) => (data['r_301'] == '4' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+        ],
+
+        // Pekerjaan tambahan (usaha)
+        if (data['r_301'] != null) ...[
+          const SizedBox(height: 12),
+          FormDropdown(
+            label: 'Apakah Ada Usaha Lain?',
+            value: data['r_306'],
+            options: const [{'value': '1', 'label': 'Ya'}, {'value': '2', 'label': 'Tidak'}],
+            onChanged: (v) => setState(() => data['r_306'] = v),
+          ),
+          if (data['r_306'] == '1') ...[
+            const SizedBox(height: 8),
+            FormDropdown(
+              label: 'Sektor Usaha Tambahan',
+              value: data['r_301_tambah'],
+              options: const [
+                {'value': '1', 'label': 'Pertanian Padi/Palawija'},
+                {'value': '2', 'label': 'Perikanan'},
+                {'value': '3', 'label': 'Peternakan'},
+                {'value': '4', 'label': 'Lainnya'},
+              ],
+              onChanged: (v) => setState(() => data['r_301_tambah'] = v),
+              validator: (v) => (data['r_306'] == '1' && v == null) ? 'Pilih sektor usaha tambahan' : null,
+            ),
+            ..._usahaTambahFields(data),
+          ],
+        ],
+      ],
+
+      // ── BURUH/PEGAWAI ───────────────────────────────────────────────────────
+      if (data['r_301_usaha_buruh_pekerjaBebas'] == '2') ...[
+        const SizedBox(height: 12),
+        _subHeader('Sektor Pekerjaan Utama (Buruh/Pegawai)'),
+        FormDropdown(
+          label: 'Pekerjaan di Sektor *',
+          value: data['r_307'],
+          options: const [
+            {'value': '1', 'label': 'Pertanian'},
+            {'value': '2', 'label': 'Non Pertanian'},
+          ],
+          onChanged: (v) => setState(() { data['r_307'] = v; data['r_308_a'] = null; data['r_309_a'] = null; }),
+          validator: (v) => (data['r_301_usaha_buruh_pekerjaBebas'] == '2' && v == null)
+              ? 'Pilih sektor pekerjaan' : null,
+        ),
+
+        // Buruh Pertanian
+        if (data['r_307'] == '1') ...[
+          const SizedBox(height: 8),
+          FormDropdown(label: 'Bekerja Sebagai', value: data['r_308_a'],
+              options: const [
+                {'value': '1', 'label': 'Petani'},
+                {'value': '2', 'label': 'Peternak'},
+                {'value': '3', 'label': 'Nelayan'},
+                {'value': '99', 'label': 'Lainnya'},
+              ],
+              onChanged: (v) => setState(() => data['r_308_a'] = v),
+              validator: (v) => (data['r_307'] == '1' && v == null) ? 'Pilih jenis pekerjaan' : null),
+          if (data['r_308_a'] == '99') ...[
+            const SizedBox(height: 8),
+            FormInput(label: 'Sebutkan Pekerjaan Pertanian Lainnya', initialValue: data['r_308_b'],
+                onChanged: (v) => data['r_308_b'] = v,
+                validator: (v) => (data['r_308_a'] == '99' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+          ],
+        ],
+
+        // Buruh Non Pertanian
+        if (data['r_307'] == '2') ...[
+          const SizedBox(height: 8),
+          FormDropdown(label: 'Bekerja Sebagai', value: data['r_309_a'],
+              options: const [
+                {'value': '1', 'label': 'Guru'},
+                {'value': '2', 'label': 'Pegawai BUMN/BUMD'},
+                {'value': '3', 'label': 'Aparat Desa/Kelurahan/Kecamatan'},
+                {'value': '4', 'label': 'TNI/Polri'},
+                {'value': '5', 'label': 'PNS'},
+                {'value': '6', 'label': 'Bagian IT'},
+                {'value': '7', 'label': 'Dokter'},
+                {'value': '8', 'label': 'Perawat'},
+                {'value': '9', 'label': 'Bidan'},
+                {'value': '10', 'label': 'Buruh Pabrik'},
+                {'value': '99', 'label': 'Lainnya'},
+              ],
+              onChanged: (v) => setState(() => data['r_309_a'] = v),
+              validator: (v) => (data['r_307'] == '2' && v == null) ? 'Pilih jenis pekerjaan' : null),
+          if (data['r_309_a'] == '99') ...[
+            const SizedBox(height: 8),
+            FormInput(label: 'Sebutkan Pekerjaan Non Pertanian Lainnya', initialValue: data['r_309_b'],
+                onChanged: (v) => data['r_309_b'] = v,
+                validator: (v) => (data['r_309_a'] == '99' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+          ],
+        ],
+
+        // Pekerjaan tambahan buruh
+        if (data['r_307'] != null) ...[
+          const SizedBox(height: 12),
+          FormDropdown(
+            label: 'Apakah Ada Pekerjaan Tambahan?',
+            value: data['r_310'],
+            options: const [{'value': '1', 'label': 'Ada'}, {'value': '2', 'label': 'Tidak Ada'}],
+            onChanged: (v) => setState(() => data['r_310'] = v),
+          ),
+          if (data['r_310'] == '1') ...[
+            const SizedBox(height: 8),
+            FormDropdown(
+              label: 'Sektor Pekerjaan Tambahan',
+              value: data['r_307_tambah'],
+              options: const [
+                {'value': '1', 'label': 'Pertanian'},
+                {'value': '2', 'label': 'Non Pertanian'},
+              ],
+              onChanged: (v) => setState(() => data['r_307_tambah'] = v),
+              validator: (v) => (data['r_310'] == '1' && v == null) ? 'Pilih sektor pekerjaan tambahan' : null,
+            ),
+            ..._buruhTambahFields(data),
+          ],
+        ],
+      ],
+
+      // ── PEKERJA BEBAS ───────────────────────────────────────────────────────
+      if (data['r_301_usaha_buruh_pekerjaBebas'] == '3') ...[
+        const SizedBox(height: 12),
+        _subHeader('Sektor Pekerjaan Utama (Pekerja Bebas)'),
+        FormDropdown(
+          label: 'Pekerjaan di Sektor *',
+          value: data['r_311'],
+          options: const [
+            {'value': '1', 'label': 'Pertanian'},
+            {'value': '2', 'label': 'Non Pertanian'},
+          ],
+          onChanged: (v) => setState(() { data['r_311'] = v; data['r_312_a'] = null; data['r_313_a'] = null; }),
+          validator: (v) => (data['r_301_usaha_buruh_pekerjaBebas'] == '3' && v == null)
+              ? 'Pilih sektor pekerjaan' : null,
+        ),
+
+        // Pekerja Bebas Pertanian
+        if (data['r_311'] == '1') ...[
+          const SizedBox(height: 8),
+          FormDropdown(label: 'Bekerja Sebagai', value: data['r_312_a'],
+              options: const [
+                {'value': '1', 'label': 'Buruh Panen Padi'},
+                {'value': '2', 'label': 'Buruh Cangkul Sawah/Ladang'},
+                {'value': '3', 'label': 'Buruh Penyadap Karet'},
+                {'value': '99', 'label': 'Lainnya'},
+              ],
+              onChanged: (v) => setState(() => data['r_312_a'] = v),
+              validator: (v) => (data['r_311'] == '1' && v == null) ? 'Pilih jenis pekerjaan' : null),
+          if (data['r_312_a'] == '99') ...[
+            const SizedBox(height: 8),
+            FormInput(label: 'Sebutkan Pekerjaan Pertanian Lainnya', initialValue: data['r_312_b'],
+                onChanged: (v) => data['r_312_b'] = v,
+                validator: (v) => (data['r_312_a'] == '99' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+          ],
+        ],
+
+        // Pekerja Bebas Non Pertanian
+        if (data['r_311'] == '2') ...[
+          const SizedBox(height: 8),
+          FormDropdown(label: 'Bekerja Sebagai', value: data['r_313_a'],
+              options: const [
+                {'value': '1', 'label': 'Tukang Cuci Keliling'},
+                {'value': '2', 'label': 'Pemulung'},
+                {'value': '3', 'label': 'Tukang Gali Sumur'},
+                {'value': '4', 'label': 'Buruh Pabrik'},
+                {'value': '5', 'label': 'Tukang Bangunan'},
+                {'value': '99', 'label': 'Lainnya'},
+              ],
+              onChanged: (v) => setState(() => data['r_313_a'] = v),
+              validator: (v) => (data['r_311'] == '2' && v == null) ? 'Pilih jenis pekerjaan' : null),
+          if (data['r_313_a'] == '99') ...[
+            const SizedBox(height: 8),
+            FormInput(label: 'Sebutkan Pekerjaan Non Pertanian Lainnya', initialValue: data['r_313_b'],
+                onChanged: (v) => data['r_313_b'] = v,
+                validator: (v) => (data['r_313_a'] == '99' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+          ],
+        ],
+
+        // Pekerjaan tambahan pekerja bebas
+        if (data['r_311'] != null) ...[
+          const SizedBox(height: 12),
+          FormDropdown(
+            label: 'Apakah Ada Pekerjaan Tambahan?',
+            value: data['r_314'],
+            options: const [{'value': '1', 'label': 'Ada'}, {'value': '2', 'label': 'Tidak Ada'}],
+            onChanged: (v) => setState(() => data['r_314'] = v),
+          ),
+          if (data['r_314'] == '1') ...[
+            const SizedBox(height: 8),
+            FormDropdown(
+              label: 'Sektor Pekerjaan Tambahan',
+              value: data['r_311_tambah'],
+              options: const [
+                {'value': '1', 'label': 'Pertanian'},
+                {'value': '2', 'label': 'Non Pertanian'},
+              ],
+              onChanged: (v) => setState(() => data['r_311_tambah'] = v),
+              validator: (v) => (data['r_314'] == '1' && v == null) ? 'Pilih sektor tambahan' : null,
+            ),
+            ..._pekerjaBebasTambahFields(data),
+          ],
+        ],
+      ],
+    ]);
+  }
+
+  // ─── Pekerjaan Tambahan: Usaha ─────────────────────────────────────────────
+  List<Widget> _usahaTambahFields(Map<String, dynamic> data) {
+    final sektor = data['r_301_tambah'];
+    if (sektor == null) return [];
+    return [
+      const SizedBox(height: 8),
+      _subHeader('Detail Usaha Tambahan'),
+      if (sektor == '1') ...[
+        FormInput(label: 'Komoditas', initialValue: data['r_302_a_tambah'],
+            onChanged: (v) => data['r_302_a_tambah'] = v,
+            validator: (v) => (sektor == '1' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+        const SizedBox(height: 6),
+        FormDropdown(label: 'Jenis Lahan', value: data['r_302_b_tambah'],
+            options: const [{'value':'1','label':'Sawah'},{'value':'2','label':'Kebun'},{'value':'3','label':'Lahan Kering'}],
+            onChanged: (v) => setState(() => data['r_302_b_tambah'] = v),
+            validator: (v) => (sektor == '1' && v == null) ? 'Wajib dipilih' : null),
+        const SizedBox(height: 6),
+        FormDropdown(label: 'Status Kepemilikan', value: data['r_302_c_tambah'],
+            options: const [{'value':'1','label':'Milik Sendiri'},{'value':'2','label':'Sewa'},{'value':'3','label':'Bebas Sewa'}],
+            onChanged: (v) => setState(() => data['r_302_c_tambah'] = v),
+            validator: (v) => (sektor == '1' && v == null) ? 'Wajib dipilih' : null),
+        const SizedBox(height: 6),
+        FormInput(label: 'Luas Lahan (m²)', initialValue: data['r_302_d_tambah'], keyboardType: TextInputType.number, onChanged: (v) => data['r_302_d_tambah'] = v, validator: (v) => (sektor == '1' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+        const SizedBox(height: 6),
+        FormInput(label: 'Produksi Setahun (Kg)', initialValue: data['r_302_e_tambah'], keyboardType: TextInputType.number, onChanged: (v) => data['r_302_e_tambah'] = v, validator: (v) => (sektor == '1' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+        const SizedBox(height: 6),
+        FormInput(label: 'Nilai Produksi (Rp)', initialValue: data['r_302_f_tambah'], keyboardType: TextInputType.number, onChanged: (v) => data['r_302_f_tambah'] = v, validator: (v) => (sektor == '1' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+        const SizedBox(height: 6),
+        FormInput(label: 'Penghasilan Bersih (Rp)', initialValue: data['r_302_g_tambah'], keyboardType: TextInputType.number, onChanged: (v) => data['r_302_g_tambah'] = v, validator: (v) => (sektor == '1' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+      ],
+      if (sektor == '2') ...[
+        FormInput(label: 'Luas Lahan Budidaya (m²)', initialValue: data['r_303_a_tambah'], keyboardType: TextInputType.number, onChanged: (v) => data['r_303_a_tambah'] = v, validator: (v) => (sektor == '2' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+        const SizedBox(height: 6),
+        FormDropdown(label: 'Jenis Ikan', value: data['r_303_b_tambah'],
+            options: const [{'value':'1','label':'Ikan Lele'},{'value':'2','label':'Ikan Nila'},{'value':'3','label':'Ikan Gurame'},{'value':'4','label':'Ikan Patin'},{'value':'5','label':'Ikan Mas'},{'value':'6','label':'Lainnya'}],
+            onChanged: (v) => setState(() => data['r_303_b_tambah'] = v),
+            validator: (v) => (sektor == '2' && v == null) ? 'Wajib dipilih' : null),
+        const SizedBox(height: 6),
+        FormInput(label: 'Produksi Setahun (Kg)', initialValue: data['r_303_c_tambah'], keyboardType: TextInputType.number, onChanged: (v) => data['r_303_c_tambah'] = v, validator: (v) => (sektor == '2' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+        const SizedBox(height: 6),
+        FormInput(label: 'Nilai Produksi (Rp)', initialValue: data['r_303_d_tambah'], keyboardType: TextInputType.number, onChanged: (v) => data['r_303_d_tambah'] = v, validator: (v) => (sektor == '2' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+        const SizedBox(height: 6),
+        FormInput(label: 'Penghasilan Bersih (Rp)', initialValue: data['r_303_e_tambah'], keyboardType: TextInputType.number, onChanged: (v) => data['r_303_e_tambah'] = v, validator: (v) => (sektor == '2' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+      ],
+      if (sektor == '3') ...[
+        FormDropdown(label: 'Jenis Ternak', value: data['r_304_a_tambah'],
+            options: const [{'value':'1','label':'Sapi'},{'value':'2','label':'Kambing'},{'value':'3','label':'Ayam'},{'value':'4','label':'Bebek'},{'value':'5','label':'Lainnya'}],
+            onChanged: (v) => setState(() => data['r_304_a_tambah'] = v),
+            validator: (v) => (sektor == '3' && v == null) ? 'Wajib dipilih' : null),
+        const SizedBox(height: 6),
+        FormInput(label: 'Jumlah Ternak', initialValue: data['r_304_b_tambah'], keyboardType: TextInputType.number, onChanged: (v) => data['r_304_b_tambah'] = v, validator: (v) => (sektor == '3' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+        const SizedBox(height: 6),
+        FormInput(label: 'Nilai Produksi (Rp)', initialValue: data['r_304_c_tambah'], keyboardType: TextInputType.number, onChanged: (v) => data['r_304_c_tambah'] = v, validator: (v) => (sektor == '3' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+        const SizedBox(height: 6),
+        FormInput(label: 'Penghasilan Bersih (Rp)', initialValue: data['r_304_d_tambah'], keyboardType: TextInputType.number, onChanged: (v) => data['r_304_d_tambah'] = v, validator: (v) => (sektor == '3' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+      ],
+      if (sektor == '4') ...[
+        FormInput(label: 'Nama Usaha', initialValue: data['r_305_a_tambah'], onChanged: (v) => data['r_305_a_tambah'] = v, validator: (v) => (sektor == '4' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+        const SizedBox(height: 6),
+        FormInput(label: 'Produk Usaha', initialValue: data['r_305_b_tambah'], onChanged: (v) => data['r_305_b_tambah'] = v, validator: (v) => (sektor == '4' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+        const SizedBox(height: 6),
+        FormInput(label: 'Alamat Usaha', initialValue: data['r_305_c_tambah'], onChanged: (v) => data['r_305_c_tambah'] = v, validator: (v) => (sektor == '4' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+        const SizedBox(height: 6),
+        FormInput(label: 'Jumlah Pekerja', initialValue: data['r_305_d_tambah'], keyboardType: TextInputType.number, onChanged: (v) => data['r_305_d_tambah'] = v, validator: (v) => (sektor == '4' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+        const SizedBox(height: 6),
+        FormInput(label: 'Omset per Bulan (Rp)', initialValue: data['r_305_e_tambah'], keyboardType: TextInputType.number, onChanged: (v) => data['r_305_e_tambah'] = v, validator: (v) => (sektor == '4' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+        const SizedBox(height: 6),
+        FormInput(label: 'Penghasilan Bersih per Bulan (Rp)', initialValue: data['r_305_f_tambah'], keyboardType: TextInputType.number, onChanged: (v) => data['r_305_f_tambah'] = v, validator: (v) => (sektor == '4' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+      ],
+    ];
+  }
+
+  // ─── Pekerjaan Tambahan: Buruh ─────────────────────────────────────────────
+  List<Widget> _buruhTambahFields(Map<String, dynamic> data) {
+    final sektor = data['r_307_tambah'];
+    if (sektor == null) return [];
+    return [
+      const SizedBox(height: 8),
+      if (sektor == '1') ...[
+        FormDropdown(label: 'Bekerja Sebagai (Tambahan)', value: data['r_308_a_tambah'],
+            options: const [{'value':'1','label':'Petani'},{'value':'2','label':'Peternak'},{'value':'3','label':'Nelayan'},{'value':'99','label':'Lainnya'}],
+            onChanged: (v) => setState(() => data['r_308_a_tambah'] = v),
+            validator: (v) => (sektor == '1' && v == null) ? 'Wajib dipilih' : null),
+        if (data['r_308_a_tambah'] == '99') FormInput(label: 'Sebutkan', initialValue: data['r_308_b_tambah'], onChanged: (v) => data['r_308_b_tambah'] = v, validator: (v) => (data['r_308_a_tambah'] == '99' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+      ],
+      if (sektor == '2') ...[
+        FormDropdown(label: 'Bekerja Sebagai (Tambahan)', value: data['r_309_a_tambah'],
+            options: const [{'value':'1','label':'Guru'},{'value':'2','label':'Pegawai BUMN/BUMD'},{'value':'3','label':'Aparat Desa'},{'value':'4','label':'TNI/Polri'},{'value':'5','label':'PNS'},{'value':'6','label':'Bagian IT'},{'value':'7','label':'Dokter'},{'value':'8','label':'Perawat'},{'value':'9','label':'Bidan'},{'value':'10','label':'Buruh Pabrik'},{'value':'99','label':'Lainnya'}],
+            onChanged: (v) => setState(() => data['r_309_a_tambah'] = v),
+            validator: (v) => (sektor == '2' && v == null) ? 'Wajib dipilih' : null),
+        if (data['r_309_a_tambah'] == '99') FormInput(label: 'Sebutkan', initialValue: data['r_309_b_tambah'], onChanged: (v) => data['r_309_b_tambah'] = v, validator: (v) => (data['r_309_a_tambah'] == '99' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+      ],
+    ];
+  }
+
+  // ─── Pekerjaan Tambahan: Pekerja Bebas ────────────────────────────────────
+  List<Widget> _pekerjaBebasTambahFields(Map<String, dynamic> data) {
+    final sektor = data['r_311_tambah'];
+    if (sektor == null) return [];
+    return [
+      const SizedBox(height: 8),
+      if (sektor == '1') ...[
+        FormDropdown(label: 'Bekerja Sebagai (Tambahan)', value: data['r_312_a_tambah'],
+            options: const [{'value':'1','label':'Buruh Panen Padi'},{'value':'2','label':'Buruh Cangkul Sawah/Ladang'},{'value':'3','label':'Buruh Penyadap Karet'},{'value':'99','label':'Lainnya'}],
+            onChanged: (v) => setState(() => data['r_312_a_tambah'] = v),
+            validator: (v) => (sektor == '1' && v == null) ? 'Wajib dipilih' : null),
+        if (data['r_312_a_tambah'] == '99') FormInput(label: 'Sebutkan', initialValue: data['r_312_b_tambah'], onChanged: (v) => data['r_312_b_tambah'] = v, validator: (v) => (data['r_312_a_tambah'] == '99' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+      ],
+      if (sektor == '2') ...[
+        FormDropdown(label: 'Bekerja Sebagai (Tambahan)', value: data['r_313_a_tambah'],
+            options: const [{'value':'1','label':'Tukang Cuci Keliling'},{'value':'2','label':'Pemulung'},{'value':'3','label':'Tukang Gali Sumur'},{'value':'4','label':'Buruh Pabrik'},{'value':'5','label':'Tukang Bangunan'},{'value':'99','label':'Lainnya'}],
+            onChanged: (v) => setState(() => data['r_313_a_tambah'] = v),
+            validator: (v) => (sektor == '2' && v == null) ? 'Wajib dipilih' : null),
+        if (data['r_313_a_tambah'] == '99') FormInput(label: 'Sebutkan', initialValue: data['r_313_b_tambah'], onChanged: (v) => data['r_313_b_tambah'] = v, validator: (v) => (data['r_313_a_tambah'] == '99' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+      ],
+    ];
+  }
+
+  // ─── Helper Widgets ───────────────────────────────────────────────────────
+
+  Widget _sectionHeader(String title, IconData icon) => Padding(
+    padding: const EdgeInsets.only(bottom: 4),
+    child: Row(children: [
+      Icon(icon, size: 16, color: AppTheme.primaryBlue),
+      const SizedBox(width: 6),
+      Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.primaryBlue)),
+    ]),
+  );
+
+  Widget _subHeader(String title) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 6),
+    child: Text(title, style: const TextStyle(
+        fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.textSecondary)),
+  );
 
   Widget _tglLahirPicker(Map<String, dynamic> data) {
     final tglStr = data['r_207']?.toString();
@@ -734,12 +1295,10 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
           borderRadius: BorderRadius.circular(8), color: Colors.white,
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Tanggal Lahir',
-              style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+          const Text('Tanggal Lahir', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
           const SizedBox(height: 4),
           Text(tgl != null ? _fmtTanggal(tgl) : 'Pilih tanggal',
-              style: TextStyle(fontSize: 13,
-                  color: tgl != null ? AppTheme.textPrimary : Colors.grey[400])),
+              style: TextStyle(fontSize: 13, color: tgl != null ? AppTheme.textPrimary : Colors.grey[400])),
         ]),
       ),
     );
@@ -760,8 +1319,7 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const Text('Disabilitas (pilih semua yang sesuai)',
-            style: TextStyle(fontSize: 12, color: AppTheme.textSecondary,
-                fontWeight: FontWeight.w500)),
+            style: TextStyle(fontSize: 12, color: AppTheme.textSecondary, fontWeight: FontWeight.w500)),
         const SizedBox(height: 6),
         Wrap(
           spacing: 6, runSpacing: 4,
@@ -776,8 +1334,7 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
               }),
               selectedColor: AppTheme.primaryBlue.withOpacity(0.15),
               checkmarkColor: AppTheme.primaryBlue,
-              labelStyle: TextStyle(
-                  color: isSel ? AppTheme.primaryBlue : AppTheme.textSecondary),
+              labelStyle: TextStyle(color: isSel ? AppTheme.primaryBlue : AppTheme.textSecondary),
               padding: EdgeInsets.zero,
             );
           }).toList(),
@@ -801,7 +1358,7 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
     ),
   );
 
-  // ─── Step 3: Konfirmasi + Waktu Akhir ────────────────────────────────────
+  // ─── Step 3: Konfirmasi ───────────────────────────────────────────────────
 
   Widget _step3(dynamic user) {
     final isi = _anggotaList.where((a) => (a['r_201']??'').toString().isNotEmpty).length;
@@ -823,13 +1380,10 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
         ]),
         const SizedBox(height: 12),
 
-        // Waktu Akhir – ada di step 3
         _section('Waktu Wawancara', Icons.schedule_outlined, [
           if (_waktuMulai != null)
-            _infoChip(Icons.play_circle_outline, AppTheme.accentGreen,
-                'Mulai', _fmtDateTime(_waktuMulai!)),
+            _infoChip(Icons.play_circle_outline, AppTheme.accentGreen, 'Mulai', _fmtDateTime(_waktuMulai!)),
           if (_waktuMulai != null) const SizedBox(height: 8),
-
           _waktuButton(
             label: 'Catat Waktu Selesai',
             icon: Icons.stop_circle_outlined,
@@ -848,14 +1402,12 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
         ]),
         const SizedBox(height: 12),
 
-        // Lokasi preview di step 3
-        if (_lokasiRumah != null)
+        if (_lokasiRumah != null) ...[
           _section('Lokasi Rumah', Icons.location_on_outlined, [
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: SizedBox(height: 130,
-                  child: _MapWidget(lat: _mapLat!, lng: _mapLng!,
-                      interactive: false, onPicked: (_, __) {})),
+                  child: _MapWidget(lat: _mapLat!, lng: _mapLng!, interactive: false, onPicked: (_, __) {})),
             ),
             const SizedBox(height: 6),
             TextButton.icon(
@@ -864,7 +1416,8 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
               label: const Text('Buka di Peta Penuh', style: TextStyle(fontSize: 12)),
             ),
           ]),
-        if (_lokasiRumah != null) const SizedBox(height: 12),
+          const SizedBox(height: 12),
+        ],
 
         _section('Keterangan', Icons.notes_outlined, [
           TextFormField(
@@ -901,8 +1454,7 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
         Icon(icon, size: 16, color: color),
         const SizedBox(width: 8),
         Text('$label: ', style: TextStyle(fontSize: 12, color: color)),
-        Text(value, style: TextStyle(
-            fontSize: 12, fontWeight: FontWeight.bold, color: color)),
+        Text(value, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color)),
       ]),
     );
   }
@@ -915,20 +1467,14 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
     final label = jam > 0 ? '${jam}j ${menit}m' : '${menit} menit';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppTheme.primaryBlue.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(20),
-      ),
+      decoration: BoxDecoration(color: AppTheme.primaryBlue.withOpacity(0.08), borderRadius: BorderRadius.circular(20)),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         const Icon(Icons.timer_outlined, size: 14, color: AppTheme.primaryBlue),
         const SizedBox(width: 4),
-        Text('Durasi: $label',
-            style: const TextStyle(fontSize: 12, color: AppTheme.primaryBlue)),
+        Text('Durasi: $label', style: const TextStyle(fontSize: 12, color: AppTheme.primaryBlue)),
       ]),
     );
   }
-
-  // ─── Section & Row helpers ────────────────────────────────────────────────
 
   Widget _section(String title, IconData icon, List<Widget> children) {
     return Container(
@@ -943,9 +1489,7 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
         Row(children: [
           Icon(icon, size: 16, color: AppTheme.primaryBlue),
           const SizedBox(width: 8),
-          Text(title, style: const TextStyle(
-              fontSize: 13, fontWeight: FontWeight.bold,
-              color: AppTheme.textPrimary)),
+          Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
         ]),
         const SizedBox(height: 12),
         ...children,
@@ -960,8 +1504,7 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
           style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary))),
       const Text(': ', style: TextStyle(color: AppTheme.textSecondary)),
       Expanded(child: Text(value,
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500,
-              color: AppTheme.textPrimary))),
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppTheme.textPrimary))),
     ]),
   );
 
@@ -970,10 +1513,8 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
   Widget _bottomBar() {
     final saving = context.watch<QuestionnaireProvider>().isSaving;
     return Container(
-      padding: EdgeInsets.only(
-        left: 16, right: 16, top: 12,
-        bottom: MediaQuery.of(context).padding.bottom + 12,
-      ),
+      padding: EdgeInsets.only(left: 16, right: 16, top: 12,
+          bottom: MediaQuery.of(context).padding.bottom + 12),
       decoration: const BoxDecoration(
         color: Colors.white,
         boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 6)],
@@ -1019,7 +1560,7 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
   }
 }
 
-// ─── Google Hybrid Map Widget (flutter_map, tanpa API key) ────────────────────
+// ─── Map Widget ───────────────────────────────────────────────────────────────
 
 class _MapWidget extends StatefulWidget {
   final double lat;
@@ -1027,12 +1568,7 @@ class _MapWidget extends StatefulWidget {
   final Function(double, double) onPicked;
   final bool interactive;
 
-  const _MapWidget({
-    required this.lat,
-    required this.lng,
-    required this.onPicked,
-    this.interactive = true,
-  });
+  const _MapWidget({required this.lat, required this.lng, required this.onPicked, this.interactive = true});
 
   @override
   State<_MapWidget> createState() => _MapWidgetState();
@@ -1043,8 +1579,7 @@ class _MapWidgetState extends State<_MapWidget> {
   late double _markerLat;
   late double _markerLng;
 
-  static const String _googleHybridUrl =
-      'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}';
+  static const String _googleHybridUrl = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}';
 
   @override
   void initState() {
@@ -1062,10 +1597,7 @@ class _MapWidgetState extends State<_MapWidget> {
 
   void _onMapTap(TapPosition tapPosition, LatLng point) {
     if (!widget.interactive) return;
-    setState(() {
-      _markerLat = point.latitude;
-      _markerLng = point.longitude;
-    });
+    setState(() { _markerLat = point.latitude; _markerLng = point.longitude; });
     widget.onPicked(point.latitude, point.longitude);
   }
 
@@ -1078,97 +1610,54 @@ class _MapWidgetState extends State<_MapWidget> {
           options: MapOptions(
             center: LatLng(widget.lat, widget.lng),
             zoom: widget.interactive ? 18.0 : 17.0,
-            maxZoom: 20,
-            minZoom: 5,
+            maxZoom: 20, minZoom: 5,
             onTap: widget.interactive ? _onMapTap : null,
           ),
           children: [
-            TileLayer(
-              urlTemplate: _googleHybridUrl,
-              userAgentPackageName: 'com.example.desa_suka_makmur',
-              maxZoom: 20,
-            ),
-            MarkerLayer(
-              markers: [
-                Marker(
-                  point: LatLng(_markerLat, _markerLng),
-                  width: 40,
-                  height: 40,
-                  child: const Icon(
-                    Icons.location_pin,
-                    color: Colors.red,
-                    size: 40,
-                  ),
-                ),
-              ],
-            ),
+            TileLayer(urlTemplate: _googleHybridUrl, userAgentPackageName: 'com.example.desa_suka_makmur', maxZoom: 20),
+            MarkerLayer(markers: [
+              Marker(
+                point: LatLng(_markerLat, _markerLng),
+                width: 40, height: 40,
+                child: const Icon(Icons.location_pin, color: Colors.red, size: 40),
+              ),
+            ]),
           ],
         ),
-
-        // Info koordinat di bawah
         Positioned(
-          bottom: 8,
-          left: 0,
-          right: 0,
+          bottom: 8, left: 0, right: 0,
           child: Center(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.6),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Text(
-                '${_markerLat.toStringAsFixed(6)}, ${_markerLng.toStringAsFixed(6)}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 11,
-                ),
-              ),
+              decoration: BoxDecoration(color: Colors.black.withOpacity(0.6), borderRadius: BorderRadius.circular(16)),
+              child: Text('${_markerLat.toStringAsFixed(6)}, ${_markerLng.toStringAsFixed(6)}',
+                  style: const TextStyle(color: Colors.white, fontSize: 11)),
             ),
           ),
         ),
-
-        // Tombol "Pilih Lokasi Ini" — hanya mode interaktif
-        if (widget.interactive)
+        if (widget.interactive) ...[
           Positioned(
-            top: 8,
-            right: 8,
+            top: 8, right: 8,
             child: ElevatedButton.icon(
               onPressed: () => widget.onPicked(_markerLat, _markerLng),
               icon: const Icon(Icons.check, size: 16),
-              label: const Text(
-                'Pilih Lokasi Ini',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-              ),
+              label: const Text('Pilih Lokasi Ini', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0B6BA8),
-                foregroundColor: Colors.white,
-                padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8)),
-                elevation: 3,
+                backgroundColor: const Color(0xFF0B6BA8), foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), elevation: 3,
               ),
             ),
           ),
-
-        // Label "Tap untuk pindah pin" — hanya mode interaktif
-        if (widget.interactive)
           Positioned(
-            top: 8,
-            left: 8,
+            top: 8, left: 8,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.55),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Text(
-                'Tap peta untuk pindah pin',
-                style: TextStyle(color: Colors.white, fontSize: 10),
-              ),
+              decoration: BoxDecoration(color: Colors.black.withOpacity(0.55), borderRadius: BorderRadius.circular(8)),
+              child: const Text('Tap peta untuk pindah pin', style: TextStyle(color: Colors.white, fontSize: 10)),
             ),
           ),
+        ],
       ],
     );
   }

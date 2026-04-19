@@ -16,17 +16,6 @@ class KuesionerDetailScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Detail Kuesioner'),
         backgroundColor: AppTheme.primaryBlue,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit, color: Colors.white),
-            onPressed: () {
-              // TODO: Navigate to edit
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Fitur edit akan segera hadir')),
-              );
-            },
-          ),
-        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -57,7 +46,7 @@ class KuesionerDetailScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             ...q.r200.asMap().entries.map(
-              (e) => _buildAnggotaCard(e.key + 1, e.value),
+                  (e) => _buildAnggotaCard(e.key + 1, e.value),
             ),
 
             if (q.r401 != null && q.r401!.isNotEmpty) ...[

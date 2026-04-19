@@ -117,7 +117,8 @@ class QuestionnaireProvider with ChangeNotifier {
         notifyListeners();
         return true;
       }
-      final updated = await ApiService.instance.updateQuestionnaire(q);
+      // FIX: pass q.id! explicitly as the first argument
+      final updated = await ApiService.instance.updateQuestionnaire(q.id!, q);
       await StorageService.instance.saveQuestionnaire(updated, isSynced: true);
       // Update in-memory
       final idx = _questionnaires.indexWhere((x) => x.id == updated.id);
