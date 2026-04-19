@@ -117,7 +117,6 @@ class QuestionnaireProvider with ChangeNotifier {
         notifyListeners();
         return true;
       }
-      // FIX: pass q.id! explicitly as the first argument
       final updated = await ApiService.instance.updateQuestionnaire(q.id!, q);
       await StorageService.instance.saveQuestionnaire(updated, isSynced: true);
       // Update in-memory
@@ -143,6 +142,29 @@ class QuestionnaireProvider with ChangeNotifier {
         notifyListeners();
         return false;
       }
+    }
+  }
+
+  /// Hapus kuesioner — coba ke server dulu, lalu hapus lokal
+  Future<bool> deleteQuestionnaire(Questionnaire q) async {
+    _error = null;
+    notifyListeners();
+    try {
+      final hasConn = await ApiService.instance.hasConnection();
+      if (hasConn && q.id != null && q.id!.isNotEmpty) {
+        await ApiService.instance.deleteQuestionnaire(q.id!);
+      }
+      // Hapus dari local storage
+      await StorageService.instance.deleteLocalQuestionnaire(q.id);
+      // Hapus dari in-memory list langsung (tanpa reload)
+      _questionnaires.removeWhere((x) => x.id == q.id);
+      _pendingCount = await StorageService.instance.getPendingCount();
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+      return false;
     }
   }
 

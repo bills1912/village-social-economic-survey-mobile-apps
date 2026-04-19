@@ -96,6 +96,17 @@ class StorageService {
     );
   }
 
+  /// Hapus kuesioner dari local DB berdasarkan server_id (MongoDB ObjectId).
+  /// Jika server_id null/kosong (data belum pernah sync), tidak melakukan apa-apa.
+  Future<void> deleteLocalQuestionnaire(String? serverId) async {
+    if (serverId == null || serverId.isEmpty) return;
+    await _db!.delete(
+      'questionnaires',
+      where: 'server_id = ?',
+      whereArgs: [serverId],
+    );
+  }
+
   Future<void> cacheQuestionnaires(List<Questionnaire> list) async {
     _prefs?.setString(
       'questionnaires_cache',
