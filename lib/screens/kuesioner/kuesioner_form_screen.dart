@@ -27,7 +27,7 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
   String? _statusKk;
   String? _sudahUrusKk;
 
-  // Anggota
+  // Anggota — setiap elemen adalah raw Map yang menyimpan SEMUA field termasuk pekerjaan
   List<Map<String, dynamic>> _anggotaList = [];
 
   // Keterangan
@@ -62,7 +62,7 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
     'r_205': null, 'r_206': '', 'r_207': null, 'r_207_usia': null,
     'r_208': '', 'r_209': null, 'r_210': null,
     'r_211': <String>[], 'r_212': null, 'r_300_pekerjaan': null,
-    // Data pekerjaan detail
+    // Detail pekerjaan
     'r_301_usaha_buruh_pekerjaBebas': null,
     // Usaha
     'r_301': null,
@@ -71,7 +71,7 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
     'r_303_a': '', 'r_303_b': null, 'r_303_c': '', 'r_303_d': '', 'r_303_e': '',
     'r_304_a': null, 'r_304_b': '', 'r_304_c': '', 'r_304_d': '',
     'r_305_a': '', 'r_305_b': '', 'r_305_c': '', 'r_305_d': '', 'r_305_e': '', 'r_305_f': '',
-    // Pekerjaan tambahan usaha
+    // Usaha tambahan
     'r_306': null, 'r_301_tambah': null,
     'r_302_a_tambah': '', 'r_302_b_tambah': null, 'r_302_c_tambah': null,
     'r_302_d_tambah': '', 'r_302_e_tambah': '', 'r_302_f_tambah': '', 'r_302_g_tambah': '',
@@ -82,7 +82,7 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
     'r_307': null, 'r_308_a': null, 'r_308_b': '', 'r_309_a': null, 'r_309_b': '',
     'r_310': null, 'r_307_tambah': null,
     'r_308_a_tambah': null, 'r_308_b_tambah': '', 'r_309_a_tambah': null, 'r_309_b_tambah': '',
-    // Pekerja Bebas
+    // Pekerja bebas
     'r_311': null, 'r_312_a': null, 'r_312_b': '', 'r_313_a': null, 'r_313_b': '',
     'r_314': null, 'r_311_tambah': null,
     'r_312_a_tambah': null, 'r_312_b_tambah': '', 'r_313_a_tambah': null, 'r_313_b_tambah': '',
@@ -94,6 +94,7 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
     _dusun = q.dusun;
     _statusKk = q.r103;
     _sudahUrusKk = q.r104;
+    // FIX: gunakan toJson() dari AnggotaKeluarga sehingga semua field pekerjaan ikut
     _anggotaList = q.r200.map((a) => a.toJson()).toList();
     if (_anggotaList.isEmpty) _anggotaList.add(_emptyAnggota());
     _keteranganCtrl.text = q.r401 ?? '';
@@ -252,10 +253,13 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
     }
   }
 
+  /// FIX UTAMA: _buildQ sekarang langsung membuat AnggotaKeluarga dari raw map
+  /// menggunakan AnggotaKeluarga.fromJson() yang sudah diperluas, sehingga
+  /// semua field pekerjaan (r_301, r_302_*, r_307, dst.) ikut tersimpan.
   Questionnaire _buildQ(dynamic user) {
     final anggota = _anggotaList
         .where((a) => (a['r_201'] ?? '').toString().isNotEmpty)
-        .map((a) => AnggotaKeluarga.fromJson(a))
+        .map((a) => AnggotaKeluarga.fromJson(Map<String, dynamic>.from(a)))
         .toList();
 
     final parts = <String>[];
@@ -626,7 +630,8 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-              child: _anggotaFields(data),
+              // FIX: teruskan context dari State ke _anggotaFields
+              child: _anggotaFields(data, context),
             ),
           ],
         ),
@@ -640,7 +645,8 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
     return m[code] ?? code;
   }
 
-  Widget _anggotaFields(Map<String, dynamic> data) {
+  // FIX: tambahkan parameter rootContext untuk showDatePicker
+  Widget _anggotaFields(Map<String, dynamic> data, BuildContext rootContext) {
     final bool sudahBekerja = data['r_300_pekerjaan'] == '2';
     final bool berdomisili = data['r_210'] == '1';
     final int? usia = data['r_207_usia'] as int?;
@@ -651,7 +657,6 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
       const Divider(height: 1),
       const SizedBox(height: 12),
 
-      // ── Data Dasar ──
       FormInput(label: 'Nama Lengkap', hint: 'Nama sesuai KTP',
           initialValue: data['r_201'], onChanged: (v) => data['r_201'] = v),
       const SizedBox(height: 10),
@@ -677,7 +682,8 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
         Expanded(child: FormInput(label: 'Tempat Lahir', initialValue: data['r_206'],
             onChanged: (v) => data['r_206'] = v)),
         const SizedBox(width: 10),
-        Expanded(child: _tglLahirPicker(data)),
+        // FIX: teruskan rootContext ke _tglLahirPicker
+        Expanded(child: _tglLahirPicker(data, rootContext)),
       ]),
       const SizedBox(height: 10),
       Row(children: [
@@ -711,7 +717,6 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
       const SizedBox(height: 12),
       _disabilitas(data),
 
-      // ── Detail Pekerjaan (hanya jika Sudah Bekerja + berdomisili + usia ≥15) ──
       if (tampilPekerjaan) ...[
         const SizedBox(height: 16),
         _sectionHeader('Detail Pekerjaan', Icons.work_outline),
@@ -745,7 +750,6 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
 
   Widget _pekerjaanFields(Map<String, dynamic> data) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      // Tipe: Usaha / Buruh / Pekerja Bebas
       FormDropdown(
         label: 'Bekerja Sebagai *',
         value: data['r_301_usaha_buruh_pekerjaBebas'],
@@ -756,7 +760,6 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
         ],
         onChanged: (v) => setState(() {
           data['r_301_usaha_buruh_pekerjaBebas'] = v;
-          // Reset sub-fields saat tipe berubah
           data['r_301'] = null; data['r_307'] = null; data['r_311'] = null;
         }),
         validator: (v) => (data['r_300_pekerjaan'] == '2' && v == null)
@@ -781,7 +784,6 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
               ? 'Pilih sektor usaha' : null,
         ),
 
-        // Pertanian
         if (data['r_301'] == '1') ...[
           const SizedBox(height: 12),
           _subHeader('Detail Pertanian Padi/Palawija'),
@@ -808,127 +810,101 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
               validator: (v) => (data['r_301'] == '1' && v == null) ? 'Pilih status kepemilikan' : null),
           const SizedBox(height: 8),
           FormInput(label: 'Luas Lahan (m²)', initialValue: data['r_302_d'],
-              keyboardType: TextInputType.number,
-              onChanged: (v) => data['r_302_d'] = v,
+              keyboardType: TextInputType.number, onChanged: (v) => data['r_302_d'] = v,
               validator: (v) => (data['r_301'] == '1' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
           const SizedBox(height: 8),
           FormInput(label: 'Jumlah Produksi Setahun (Kg)', initialValue: data['r_302_e'],
-              keyboardType: TextInputType.number,
-              onChanged: (v) => data['r_302_e'] = v,
+              keyboardType: TextInputType.number, onChanged: (v) => data['r_302_e'] = v,
               validator: (v) => (data['r_301'] == '1' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
           const SizedBox(height: 8),
           FormInput(label: 'Nilai Produksi Setahun (Rp)', initialValue: data['r_302_f'],
-              keyboardType: TextInputType.number,
-              onChanged: (v) => data['r_302_f'] = v,
+              keyboardType: TextInputType.number, onChanged: (v) => data['r_302_f'] = v,
               validator: (v) => (data['r_301'] == '1' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
           const SizedBox(height: 8),
           FormInput(label: 'Penghasilan Bersih Setahun (Rp)', initialValue: data['r_302_g'],
-              keyboardType: TextInputType.number,
-              onChanged: (v) => data['r_302_g'] = v,
+              keyboardType: TextInputType.number, onChanged: (v) => data['r_302_g'] = v,
               validator: (v) => (data['r_301'] == '1' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
         ],
 
-        // Perikanan
         if (data['r_301'] == '2') ...[
           const SizedBox(height: 12),
           _subHeader('Detail Perikanan'),
           FormInput(label: 'Luas Lahan Budidaya (m²)', initialValue: data['r_303_a'],
-              keyboardType: TextInputType.number,
-              onChanged: (v) => data['r_303_a'] = v,
+              keyboardType: TextInputType.number, onChanged: (v) => data['r_303_a'] = v,
               validator: (v) => (data['r_301'] == '2' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
           const SizedBox(height: 8),
           FormDropdown(label: 'Jenis Ikan', value: data['r_303_b'],
               options: const [
-                {'value': '1', 'label': 'Ikan Lele'},
-                {'value': '2', 'label': 'Ikan Nila'},
-                {'value': '3', 'label': 'Ikan Gurame'},
-                {'value': '4', 'label': 'Ikan Patin'},
-                {'value': '5', 'label': 'Ikan Mas'},
-                {'value': '6', 'label': 'Lainnya'},
+                {'value': '1', 'label': 'Ikan Lele'}, {'value': '2', 'label': 'Ikan Nila'},
+                {'value': '3', 'label': 'Ikan Gurame'}, {'value': '4', 'label': 'Ikan Patin'},
+                {'value': '5', 'label': 'Ikan Mas'}, {'value': '6', 'label': 'Lainnya'},
               ],
               onChanged: (v) => setState(() => data['r_303_b'] = v),
               validator: (v) => (data['r_301'] == '2' && v == null) ? 'Pilih jenis ikan' : null),
           const SizedBox(height: 8),
           FormInput(label: 'Jumlah Produksi Setahun (Kg)', initialValue: data['r_303_c'],
-              keyboardType: TextInputType.number,
-              onChanged: (v) => data['r_303_c'] = v,
+              keyboardType: TextInputType.number, onChanged: (v) => data['r_303_c'] = v,
               validator: (v) => (data['r_301'] == '2' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
           const SizedBox(height: 8),
           FormInput(label: 'Nilai Produksi Setahun (Rp)', initialValue: data['r_303_d'],
-              keyboardType: TextInputType.number,
-              onChanged: (v) => data['r_303_d'] = v,
+              keyboardType: TextInputType.number, onChanged: (v) => data['r_303_d'] = v,
               validator: (v) => (data['r_301'] == '2' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
           const SizedBox(height: 8),
           FormInput(label: 'Penghasilan Bersih Setahun (Rp)', initialValue: data['r_303_e'],
-              keyboardType: TextInputType.number,
-              onChanged: (v) => data['r_303_e'] = v,
+              keyboardType: TextInputType.number, onChanged: (v) => data['r_303_e'] = v,
               validator: (v) => (data['r_301'] == '2' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
         ],
 
-        // Peternakan
         if (data['r_301'] == '3') ...[
           const SizedBox(height: 12),
           _subHeader('Detail Peternakan'),
           FormDropdown(label: 'Jenis Ternak', value: data['r_304_a'],
               options: const [
-                {'value': '1', 'label': 'Sapi'},
-                {'value': '2', 'label': 'Kambing'},
-                {'value': '3', 'label': 'Ayam'},
-                {'value': '4', 'label': 'Bebek'},
+                {'value': '1', 'label': 'Sapi'}, {'value': '2', 'label': 'Kambing'},
+                {'value': '3', 'label': 'Ayam'}, {'value': '4', 'label': 'Bebek'},
                 {'value': '5', 'label': 'Lainnya'},
               ],
               onChanged: (v) => setState(() => data['r_304_a'] = v),
               validator: (v) => (data['r_301'] == '3' && v == null) ? 'Pilih jenis ternak' : null),
           const SizedBox(height: 8),
           FormInput(label: 'Jumlah Ternak', initialValue: data['r_304_b'],
-              keyboardType: TextInputType.number,
-              onChanged: (v) => data['r_304_b'] = v,
+              keyboardType: TextInputType.number, onChanged: (v) => data['r_304_b'] = v,
               validator: (v) => (data['r_301'] == '3' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
           const SizedBox(height: 8),
           FormInput(label: 'Nilai Produksi Setahun (Rp)', initialValue: data['r_304_c'],
-              keyboardType: TextInputType.number,
-              onChanged: (v) => data['r_304_c'] = v,
+              keyboardType: TextInputType.number, onChanged: (v) => data['r_304_c'] = v,
               validator: (v) => (data['r_301'] == '3' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
           const SizedBox(height: 8),
           FormInput(label: 'Penghasilan Bersih Setahun (Rp)', initialValue: data['r_304_d'],
-              keyboardType: TextInputType.number,
-              onChanged: (v) => data['r_304_d'] = v,
+              keyboardType: TextInputType.number, onChanged: (v) => data['r_304_d'] = v,
               validator: (v) => (data['r_301'] == '3' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
         ],
 
-        // Lainnya
         if (data['r_301'] == '4') ...[
           const SizedBox(height: 12),
           _subHeader('Detail Usaha Lainnya'),
-          FormInput(label: 'Nama Usaha', initialValue: data['r_305_a'],
-              onChanged: (v) => data['r_305_a'] = v,
+          FormInput(label: 'Nama Usaha', initialValue: data['r_305_a'], onChanged: (v) => data['r_305_a'] = v,
               validator: (v) => (data['r_301'] == '4' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
           const SizedBox(height: 8),
-          FormInput(label: 'Produk Usaha', initialValue: data['r_305_b'],
-              onChanged: (v) => data['r_305_b'] = v,
+          FormInput(label: 'Produk Usaha', initialValue: data['r_305_b'], onChanged: (v) => data['r_305_b'] = v,
               validator: (v) => (data['r_301'] == '4' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
           const SizedBox(height: 8),
-          FormInput(label: 'Alamat Tempat Usaha', initialValue: data['r_305_c'],
-              onChanged: (v) => data['r_305_c'] = v,
+          FormInput(label: 'Alamat Tempat Usaha', initialValue: data['r_305_c'], onChanged: (v) => data['r_305_c'] = v,
               validator: (v) => (data['r_301'] == '4' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
           const SizedBox(height: 8),
           FormInput(label: 'Jumlah Pekerja', initialValue: data['r_305_d'],
-              keyboardType: TextInputType.number,
-              onChanged: (v) => data['r_305_d'] = v,
+              keyboardType: TextInputType.number, onChanged: (v) => data['r_305_d'] = v,
               validator: (v) => (data['r_301'] == '4' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
           const SizedBox(height: 8),
           FormInput(label: 'Rata-Rata Omset per Bulan (Rp)', initialValue: data['r_305_e'],
-              keyboardType: TextInputType.number,
-              onChanged: (v) => data['r_305_e'] = v,
+              keyboardType: TextInputType.number, onChanged: (v) => data['r_305_e'] = v,
               validator: (v) => (data['r_301'] == '4' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
           const SizedBox(height: 8),
           FormInput(label: 'Rata-Rata Penghasilan Bersih per Bulan (Rp)', initialValue: data['r_305_f'],
-              keyboardType: TextInputType.number,
-              onChanged: (v) => data['r_305_f'] = v,
+              keyboardType: TextInputType.number, onChanged: (v) => data['r_305_f'] = v,
               validator: (v) => (data['r_301'] == '4' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
         ],
 
-        // Pekerjaan tambahan (usaha)
         if (data['r_301'] != null) ...[
           const SizedBox(height: 12),
           FormDropdown(
@@ -956,7 +932,7 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
         ],
       ],
 
-      // ── BURUH/PEGAWAI ───────────────────────────────────────────────────────
+      // ── BURUH ───────────────────────────────────────────────────────────────
       if (data['r_301_usaha_buruh_pekerjaBebas'] == '2') ...[
         const SizedBox(height: 12),
         _subHeader('Sektor Pekerjaan Utama (Buruh/Pegawai)'),
@@ -972,15 +948,12 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
               ? 'Pilih sektor pekerjaan' : null,
         ),
 
-        // Buruh Pertanian
         if (data['r_307'] == '1') ...[
           const SizedBox(height: 8),
           FormDropdown(label: 'Bekerja Sebagai', value: data['r_308_a'],
               options: const [
-                {'value': '1', 'label': 'Petani'},
-                {'value': '2', 'label': 'Peternak'},
-                {'value': '3', 'label': 'Nelayan'},
-                {'value': '99', 'label': 'Lainnya'},
+                {'value': '1', 'label': 'Petani'}, {'value': '2', 'label': 'Peternak'},
+                {'value': '3', 'label': 'Nelayan'}, {'value': '99', 'label': 'Lainnya'},
               ],
               onChanged: (v) => setState(() => data['r_308_a'] = v),
               validator: (v) => (data['r_307'] == '1' && v == null) ? 'Pilih jenis pekerjaan' : null),
@@ -992,21 +965,15 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
           ],
         ],
 
-        // Buruh Non Pertanian
         if (data['r_307'] == '2') ...[
           const SizedBox(height: 8),
           FormDropdown(label: 'Bekerja Sebagai', value: data['r_309_a'],
               options: const [
-                {'value': '1', 'label': 'Guru'},
-                {'value': '2', 'label': 'Pegawai BUMN/BUMD'},
-                {'value': '3', 'label': 'Aparat Desa/Kelurahan/Kecamatan'},
-                {'value': '4', 'label': 'TNI/Polri'},
-                {'value': '5', 'label': 'PNS'},
-                {'value': '6', 'label': 'Bagian IT'},
-                {'value': '7', 'label': 'Dokter'},
-                {'value': '8', 'label': 'Perawat'},
-                {'value': '9', 'label': 'Bidan'},
-                {'value': '10', 'label': 'Buruh Pabrik'},
+                {'value': '1', 'label': 'Guru'}, {'value': '2', 'label': 'Pegawai BUMN/BUMD'},
+                {'value': '3', 'label': 'Aparat Desa/Kelurahan/Kecamatan'}, {'value': '4', 'label': 'TNI/Polri'},
+                {'value': '5', 'label': 'PNS'}, {'value': '6', 'label': 'Bagian IT'},
+                {'value': '7', 'label': 'Dokter'}, {'value': '8', 'label': 'Perawat'},
+                {'value': '9', 'label': 'Bidan'}, {'value': '10', 'label': 'Buruh Pabrik'},
                 {'value': '99', 'label': 'Lainnya'},
               ],
               onChanged: (v) => setState(() => data['r_309_a'] = v),
@@ -1019,7 +986,6 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
           ],
         ],
 
-        // Pekerjaan tambahan buruh
         if (data['r_307'] != null) ...[
           const SizedBox(height: 12),
           FormDropdown(
@@ -1045,7 +1011,7 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
         ],
       ],
 
-      // ── PEKERJA BEBAS ───────────────────────────────────────────────────────
+      // ── PEKERJA BEBAS ────────────────────────────────────────────────────────
       if (data['r_301_usaha_buruh_pekerjaBebas'] == '3') ...[
         const SizedBox(height: 12),
         _subHeader('Sektor Pekerjaan Utama (Pekerja Bebas)'),
@@ -1061,15 +1027,12 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
               ? 'Pilih sektor pekerjaan' : null,
         ),
 
-        // Pekerja Bebas Pertanian
         if (data['r_311'] == '1') ...[
           const SizedBox(height: 8),
           FormDropdown(label: 'Bekerja Sebagai', value: data['r_312_a'],
               options: const [
-                {'value': '1', 'label': 'Buruh Panen Padi'},
-                {'value': '2', 'label': 'Buruh Cangkul Sawah/Ladang'},
-                {'value': '3', 'label': 'Buruh Penyadap Karet'},
-                {'value': '99', 'label': 'Lainnya'},
+                {'value': '1', 'label': 'Buruh Panen Padi'}, {'value': '2', 'label': 'Buruh Cangkul Sawah/Ladang'},
+                {'value': '3', 'label': 'Buruh Penyadap Karet'}, {'value': '99', 'label': 'Lainnya'},
               ],
               onChanged: (v) => setState(() => data['r_312_a'] = v),
               validator: (v) => (data['r_311'] == '1' && v == null) ? 'Pilih jenis pekerjaan' : null),
@@ -1081,17 +1044,13 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
           ],
         ],
 
-        // Pekerja Bebas Non Pertanian
         if (data['r_311'] == '2') ...[
           const SizedBox(height: 8),
           FormDropdown(label: 'Bekerja Sebagai', value: data['r_313_a'],
               options: const [
-                {'value': '1', 'label': 'Tukang Cuci Keliling'},
-                {'value': '2', 'label': 'Pemulung'},
-                {'value': '3', 'label': 'Tukang Gali Sumur'},
-                {'value': '4', 'label': 'Buruh Pabrik'},
-                {'value': '5', 'label': 'Tukang Bangunan'},
-                {'value': '99', 'label': 'Lainnya'},
+                {'value': '1', 'label': 'Tukang Cuci Keliling'}, {'value': '2', 'label': 'Pemulung'},
+                {'value': '3', 'label': 'Tukang Gali Sumur'}, {'value': '4', 'label': 'Buruh Pabrik'},
+                {'value': '5', 'label': 'Tukang Bangunan'}, {'value': '99', 'label': 'Lainnya'},
               ],
               onChanged: (v) => setState(() => data['r_313_a'] = v),
               validator: (v) => (data['r_311'] == '2' && v == null) ? 'Pilih jenis pekerjaan' : null),
@@ -1103,7 +1062,6 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
           ],
         ],
 
-        // Pekerjaan tambahan pekerja bebas
         if (data['r_311'] != null) ...[
           const SizedBox(height: 12),
           FormDropdown(
@@ -1139,19 +1097,11 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
       const SizedBox(height: 8),
       _subHeader('Detail Usaha Tambahan'),
       if (sektor == '1') ...[
-        FormInput(label: 'Komoditas', initialValue: data['r_302_a_tambah'],
-            onChanged: (v) => data['r_302_a_tambah'] = v,
-            validator: (v) => (sektor == '1' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
+        FormInput(label: 'Komoditas', initialValue: data['r_302_a_tambah'], onChanged: (v) => data['r_302_a_tambah'] = v, validator: (v) => (sektor == '1' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
         const SizedBox(height: 6),
-        FormDropdown(label: 'Jenis Lahan', value: data['r_302_b_tambah'],
-            options: const [{'value':'1','label':'Sawah'},{'value':'2','label':'Kebun'},{'value':'3','label':'Lahan Kering'}],
-            onChanged: (v) => setState(() => data['r_302_b_tambah'] = v),
-            validator: (v) => (sektor == '1' && v == null) ? 'Wajib dipilih' : null),
+        FormDropdown(label: 'Jenis Lahan', value: data['r_302_b_tambah'], options: const [{'value':'1','label':'Sawah'},{'value':'2','label':'Kebun'},{'value':'3','label':'Lahan Kering'}], onChanged: (v) => setState(() => data['r_302_b_tambah'] = v), validator: (v) => (sektor == '1' && v == null) ? 'Wajib dipilih' : null),
         const SizedBox(height: 6),
-        FormDropdown(label: 'Status Kepemilikan', value: data['r_302_c_tambah'],
-            options: const [{'value':'1','label':'Milik Sendiri'},{'value':'2','label':'Sewa'},{'value':'3','label':'Bebas Sewa'}],
-            onChanged: (v) => setState(() => data['r_302_c_tambah'] = v),
-            validator: (v) => (sektor == '1' && v == null) ? 'Wajib dipilih' : null),
+        FormDropdown(label: 'Status Kepemilikan', value: data['r_302_c_tambah'], options: const [{'value':'1','label':'Milik Sendiri'},{'value':'2','label':'Sewa'},{'value':'3','label':'Bebas Sewa'}], onChanged: (v) => setState(() => data['r_302_c_tambah'] = v), validator: (v) => (sektor == '1' && v == null) ? 'Wajib dipilih' : null),
         const SizedBox(height: 6),
         FormInput(label: 'Luas Lahan (m²)', initialValue: data['r_302_d_tambah'], keyboardType: TextInputType.number, onChanged: (v) => data['r_302_d_tambah'] = v, validator: (v) => (sektor == '1' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
         const SizedBox(height: 6),
@@ -1164,10 +1114,7 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
       if (sektor == '2') ...[
         FormInput(label: 'Luas Lahan Budidaya (m²)', initialValue: data['r_303_a_tambah'], keyboardType: TextInputType.number, onChanged: (v) => data['r_303_a_tambah'] = v, validator: (v) => (sektor == '2' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
         const SizedBox(height: 6),
-        FormDropdown(label: 'Jenis Ikan', value: data['r_303_b_tambah'],
-            options: const [{'value':'1','label':'Ikan Lele'},{'value':'2','label':'Ikan Nila'},{'value':'3','label':'Ikan Gurame'},{'value':'4','label':'Ikan Patin'},{'value':'5','label':'Ikan Mas'},{'value':'6','label':'Lainnya'}],
-            onChanged: (v) => setState(() => data['r_303_b_tambah'] = v),
-            validator: (v) => (sektor == '2' && v == null) ? 'Wajib dipilih' : null),
+        FormDropdown(label: 'Jenis Ikan', value: data['r_303_b_tambah'], options: const [{'value':'1','label':'Ikan Lele'},{'value':'2','label':'Ikan Nila'},{'value':'3','label':'Ikan Gurame'},{'value':'4','label':'Ikan Patin'},{'value':'5','label':'Ikan Mas'},{'value':'6','label':'Lainnya'}], onChanged: (v) => setState(() => data['r_303_b_tambah'] = v), validator: (v) => (sektor == '2' && v == null) ? 'Wajib dipilih' : null),
         const SizedBox(height: 6),
         FormInput(label: 'Produksi Setahun (Kg)', initialValue: data['r_303_c_tambah'], keyboardType: TextInputType.number, onChanged: (v) => data['r_303_c_tambah'] = v, validator: (v) => (sektor == '2' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
         const SizedBox(height: 6),
@@ -1176,10 +1123,7 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
         FormInput(label: 'Penghasilan Bersih (Rp)', initialValue: data['r_303_e_tambah'], keyboardType: TextInputType.number, onChanged: (v) => data['r_303_e_tambah'] = v, validator: (v) => (sektor == '2' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
       ],
       if (sektor == '3') ...[
-        FormDropdown(label: 'Jenis Ternak', value: data['r_304_a_tambah'],
-            options: const [{'value':'1','label':'Sapi'},{'value':'2','label':'Kambing'},{'value':'3','label':'Ayam'},{'value':'4','label':'Bebek'},{'value':'5','label':'Lainnya'}],
-            onChanged: (v) => setState(() => data['r_304_a_tambah'] = v),
-            validator: (v) => (sektor == '3' && v == null) ? 'Wajib dipilih' : null),
+        FormDropdown(label: 'Jenis Ternak', value: data['r_304_a_tambah'], options: const [{'value':'1','label':'Sapi'},{'value':'2','label':'Kambing'},{'value':'3','label':'Ayam'},{'value':'4','label':'Bebek'},{'value':'5','label':'Lainnya'}], onChanged: (v) => setState(() => data['r_304_a_tambah'] = v), validator: (v) => (sektor == '3' && v == null) ? 'Wajib dipilih' : null),
         const SizedBox(height: 6),
         FormInput(label: 'Jumlah Ternak', initialValue: data['r_304_b_tambah'], keyboardType: TextInputType.number, onChanged: (v) => data['r_304_b_tambah'] = v, validator: (v) => (sektor == '3' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
         const SizedBox(height: 6),
@@ -1210,17 +1154,11 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
     return [
       const SizedBox(height: 8),
       if (sektor == '1') ...[
-        FormDropdown(label: 'Bekerja Sebagai (Tambahan)', value: data['r_308_a_tambah'],
-            options: const [{'value':'1','label':'Petani'},{'value':'2','label':'Peternak'},{'value':'3','label':'Nelayan'},{'value':'99','label':'Lainnya'}],
-            onChanged: (v) => setState(() => data['r_308_a_tambah'] = v),
-            validator: (v) => (sektor == '1' && v == null) ? 'Wajib dipilih' : null),
+        FormDropdown(label: 'Bekerja Sebagai (Tambahan)', value: data['r_308_a_tambah'], options: const [{'value':'1','label':'Petani'},{'value':'2','label':'Peternak'},{'value':'3','label':'Nelayan'},{'value':'99','label':'Lainnya'}], onChanged: (v) => setState(() => data['r_308_a_tambah'] = v), validator: (v) => (sektor == '1' && v == null) ? 'Wajib dipilih' : null),
         if (data['r_308_a_tambah'] == '99') FormInput(label: 'Sebutkan', initialValue: data['r_308_b_tambah'], onChanged: (v) => data['r_308_b_tambah'] = v, validator: (v) => (data['r_308_a_tambah'] == '99' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
       ],
       if (sektor == '2') ...[
-        FormDropdown(label: 'Bekerja Sebagai (Tambahan)', value: data['r_309_a_tambah'],
-            options: const [{'value':'1','label':'Guru'},{'value':'2','label':'Pegawai BUMN/BUMD'},{'value':'3','label':'Aparat Desa'},{'value':'4','label':'TNI/Polri'},{'value':'5','label':'PNS'},{'value':'6','label':'Bagian IT'},{'value':'7','label':'Dokter'},{'value':'8','label':'Perawat'},{'value':'9','label':'Bidan'},{'value':'10','label':'Buruh Pabrik'},{'value':'99','label':'Lainnya'}],
-            onChanged: (v) => setState(() => data['r_309_a_tambah'] = v),
-            validator: (v) => (sektor == '2' && v == null) ? 'Wajib dipilih' : null),
+        FormDropdown(label: 'Bekerja Sebagai (Tambahan)', value: data['r_309_a_tambah'], options: const [{'value':'1','label':'Guru'},{'value':'2','label':'Pegawai BUMN/BUMD'},{'value':'3','label':'Aparat Desa'},{'value':'4','label':'TNI/Polri'},{'value':'5','label':'PNS'},{'value':'6','label':'Bagian IT'},{'value':'7','label':'Dokter'},{'value':'8','label':'Perawat'},{'value':'9','label':'Bidan'},{'value':'10','label':'Buruh Pabrik'},{'value':'99','label':'Lainnya'}], onChanged: (v) => setState(() => data['r_309_a_tambah'] = v), validator: (v) => (sektor == '2' && v == null) ? 'Wajib dipilih' : null),
         if (data['r_309_a_tambah'] == '99') FormInput(label: 'Sebutkan', initialValue: data['r_309_b_tambah'], onChanged: (v) => data['r_309_b_tambah'] = v, validator: (v) => (data['r_309_a_tambah'] == '99' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
       ],
     ];
@@ -1233,17 +1171,11 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
     return [
       const SizedBox(height: 8),
       if (sektor == '1') ...[
-        FormDropdown(label: 'Bekerja Sebagai (Tambahan)', value: data['r_312_a_tambah'],
-            options: const [{'value':'1','label':'Buruh Panen Padi'},{'value':'2','label':'Buruh Cangkul Sawah/Ladang'},{'value':'3','label':'Buruh Penyadap Karet'},{'value':'99','label':'Lainnya'}],
-            onChanged: (v) => setState(() => data['r_312_a_tambah'] = v),
-            validator: (v) => (sektor == '1' && v == null) ? 'Wajib dipilih' : null),
+        FormDropdown(label: 'Bekerja Sebagai (Tambahan)', value: data['r_312_a_tambah'], options: const [{'value':'1','label':'Buruh Panen Padi'},{'value':'2','label':'Buruh Cangkul Sawah/Ladang'},{'value':'3','label':'Buruh Penyadap Karet'},{'value':'99','label':'Lainnya'}], onChanged: (v) => setState(() => data['r_312_a_tambah'] = v), validator: (v) => (sektor == '1' && v == null) ? 'Wajib dipilih' : null),
         if (data['r_312_a_tambah'] == '99') FormInput(label: 'Sebutkan', initialValue: data['r_312_b_tambah'], onChanged: (v) => data['r_312_b_tambah'] = v, validator: (v) => (data['r_312_a_tambah'] == '99' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
       ],
       if (sektor == '2') ...[
-        FormDropdown(label: 'Bekerja Sebagai (Tambahan)', value: data['r_313_a_tambah'],
-            options: const [{'value':'1','label':'Tukang Cuci Keliling'},{'value':'2','label':'Pemulung'},{'value':'3','label':'Tukang Gali Sumur'},{'value':'4','label':'Buruh Pabrik'},{'value':'5','label':'Tukang Bangunan'},{'value':'99','label':'Lainnya'}],
-            onChanged: (v) => setState(() => data['r_313_a_tambah'] = v),
-            validator: (v) => (sektor == '2' && v == null) ? 'Wajib dipilih' : null),
+        FormDropdown(label: 'Bekerja Sebagai (Tambahan)', value: data['r_313_a_tambah'], options: const [{'value':'1','label':'Tukang Cuci Keliling'},{'value':'2','label':'Pemulung'},{'value':'3','label':'Tukang Gali Sumur'},{'value':'4','label':'Buruh Pabrik'},{'value':'5','label':'Tukang Bangunan'},{'value':'99','label':'Lainnya'}], onChanged: (v) => setState(() => data['r_313_a_tambah'] = v), validator: (v) => (sektor == '2' && v == null) ? 'Wajib dipilih' : null),
         if (data['r_313_a_tambah'] == '99') FormInput(label: 'Sebutkan', initialValue: data['r_313_b_tambah'], onChanged: (v) => data['r_313_b_tambah'] = v, validator: (v) => (data['r_313_a_tambah'] == '99' && (v?.isEmpty ?? true)) ? 'Wajib diisi' : null),
       ],
     ];
@@ -1266,16 +1198,17 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
         fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.textSecondary)),
   );
 
-  Widget _tglLahirPicker(Map<String, dynamic> data) {
+  // FIX: tambahkan parameter rootContext agar showDatePicker pakai context dari MaterialApp
+  Widget _tglLahirPicker(Map<String, dynamic> data, BuildContext rootContext) {
     final tglStr = data['r_207']?.toString();
     DateTime? tgl = tglStr != null ? DateTime.tryParse(tglStr) : null;
     return InkWell(
       onTap: () async {
         final p = await showDatePicker(
-          context: context,
+          context: rootContext,  // FIX: gunakan rootContext, bukan local context
           initialDate: tgl ?? DateTime(1990),
-          firstDate: DateTime(1900), lastDate: DateTime.now(),
-          locale: const Locale('id','ID'),
+          firstDate: DateTime(1900),
+          lastDate: DateTime.now(),
         );
         if (p != null) {
           final now = DateTime.now();

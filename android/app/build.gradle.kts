@@ -55,6 +55,22 @@ android {
             isShrinkResources = false
         }
     }
+
+    applicationVariants.all {
+        val variant = this
+        // Gunakan forEach agar tidak diminta return Boolean seperti pada .all
+        variant.outputs.forEach { output ->
+            // Casting (konversi tipe) wajib dilakukan di Kotlin DSL
+            val outputImpl = output as com.android.build.gradle.internal.api.BaseVariantOutputImpl
+
+            if (variant.name == "release") {
+                outputImpl.outputFileName = "descan26-pendataan.apk"
+            } else if (variant.name == "debug") {
+                outputImpl.outputFileName = "descan26-pendataan-debug.apk"
+            }
+        }
+    }
+
 }
 
 flutter {
