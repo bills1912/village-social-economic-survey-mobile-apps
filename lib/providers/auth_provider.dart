@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../models/user.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
+import '../services/permissions_service.dart';
 
 class AuthProvider with ChangeNotifier {
   User? _user;
@@ -20,6 +21,10 @@ class AuthProvider with ChangeNotifier {
 
   Future<void> _loadFromStorage() async {
     _user = await StorageService.instance.getUser();
+    if (_user != null) {
+      // Load cached permissions saat app restart
+      await PermissionsService.instance.loadFromCache();
+    }
     notifyListeners();
   }
 
@@ -47,6 +52,9 @@ class AuthProvider with ChangeNotifier {
       );
       await StorageService.instance.saveUser(_user!);
 
+      // ── Fetch permissions dari server setelah login ──────────────────────
+      await PermissionsService.instance.fetchAndCache(token.toString());
+
       _isLoading = false;
       notifyListeners();
       return true;
@@ -62,6 +70,7 @@ class AuthProvider with ChangeNotifier {
     await ApiService.instance.logout();
     await StorageService.instance.removeToken();
     await StorageService.instance.removeUser();
+    PermissionsService.instance.clear(); // ── Hapus permissions saat logout
     _user = null;
     notifyListeners();
   }
@@ -71,5 +80,3 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 }
-
-// lib/providers/questionnaire_provider.dart

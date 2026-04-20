@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/questionnaire_provider.dart';
 import '../../models/questionnaire.dart';
+import '../../services/permissions_service.dart';
 import '../../widgets/age_chart.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/chart_widgets.dart';
@@ -36,6 +37,18 @@ class _LaporanScreenState extends State<LaporanScreen>
 
   @override
   Widget build(BuildContext context) {
+    // ── Permission guard ────────────────────────────────────────────────────
+    if (!PermissionsService.instance.can(AppFeatures.reports)) {
+      return Scaffold(
+        backgroundColor: AppTheme.bgLight,
+        appBar: AppBar(
+          title: const Text('Laporan & Statistik'),
+          backgroundColor: AppTheme.primaryBlue,
+        ),
+        body: _buildAccessDenied('Laporan & Statistik'),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppTheme.bgLight,
       appBar: AppBar(
@@ -53,7 +66,8 @@ class _LaporanScreenState extends State<LaporanScreen>
           indicatorColor: Colors.white,
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white60,
-          labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          labelStyle:
+          const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
           isScrollable: true,
           tabAlignment: TabAlignment.start,
           tabs: const [
@@ -70,7 +84,6 @@ class _LaporanScreenState extends State<LaporanScreen>
             return const Center(child: CircularProgressIndicator());
           }
 
-          // filter by dusun if selected
           List<Questionnaire> data = prov.questionnaires;
           if (_filterDusun != null) {
             data = data.where((q) => q.dusun == _filterDusun).toList();
@@ -92,6 +105,28 @@ class _LaporanScreenState extends State<LaporanScreen>
     );
   }
 
+  // ── Access denied widget ──────────────────────────────────────────────────
+  Widget _buildAccessDenied(String feature) => Center(
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.lock_outline, size: 72, color: Colors.grey[300]),
+        const SizedBox(height: 16),
+        Text('Akses Ditolak',
+            style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[600])),
+        const SizedBox(height: 8),
+        Text(
+          'Anda tidak memiliki izin\nuntuk mengakses $feature.',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 14, color: Colors.grey[400]),
+        ),
+      ],
+    ),
+  );
+
   // ─── TAB 1 : Ringkasan ───────────────────────────────────────────────────
   Widget _buildRingkasanTab(_Stats s, List<Questionnaire> data) {
     return RefreshIndicator(
@@ -103,7 +138,6 @@ class _LaporanScreenState extends State<LaporanScreen>
           if (_filterDusun != null) _filterChip(),
           _sectionTitle('Ringkasan Pendataan'),
           const SizedBox(height: 10),
-          // Big stats grid
           GridView.count(
             crossAxisCount: 2,
             shrinkWrap: true,
@@ -123,29 +157,18 @@ class _LaporanScreenState extends State<LaporanScreen>
             ],
           ),
           const SizedBox(height: 20),
-
-          // KK per dusun summary
           _sectionTitle('Distribusi KK per Dusun'),
           const SizedBox(height: 10),
           _buildDusunSummaryCards(s),
           const SizedBox(height: 20),
-
-          // Rasio gender
           _sectionTitle('Rasio Jenis Kelamin'),
           const SizedBox(height: 10),
-          GenderPieChart(
-            lakiLaki: s.totalL,
-            perempuan: s.totalP,
-          ),
+          GenderPieChart(lakiLaki: s.totalL, perempuan: s.totalP),
           const SizedBox(height: 20),
-
-          // Status KK
           _sectionTitle('Distribusi Status KK'),
           const SizedBox(height: 10),
           _buildStatusKkChart(s),
           const SizedBox(height: 20),
-
-          // Progress petugas
           _sectionTitle('Kinerja Petugas'),
           const SizedBox(height: 10),
           OfficerProgressChart(perPetugas: s.perPetugas),
@@ -165,7 +188,6 @@ class _LaporanScreenState extends State<LaporanScreen>
         const SizedBox(height: 10),
         AgeDistributionChart(ageGroups: s.kelompokUsia),
         const SizedBox(height: 20),
-
         _sectionTitle('Status Perkawinan'),
         const SizedBox(height: 10),
         _buildHorizontalBar(
@@ -178,7 +200,6 @@ class _LaporanScreenState extends State<LaporanScreen>
           },
         ),
         const SizedBox(height: 20),
-
         _sectionTitle('Kewarganegaraan'),
         const SizedBox(height: 10),
         _buildHorizontalBar(
@@ -189,7 +210,6 @@ class _LaporanScreenState extends State<LaporanScreen>
           },
         ),
         const SizedBox(height: 20),
-
         _sectionTitle('Keberadaan Penduduk'),
         const SizedBox(height: 10),
         _buildHorizontalBar(
@@ -202,7 +222,6 @@ class _LaporanScreenState extends State<LaporanScreen>
           },
         ),
         const SizedBox(height: 20),
-
         _sectionTitle('Disabilitas'),
         const SizedBox(height: 10),
         _buildDisabilitasCard(s),
@@ -221,12 +240,10 @@ class _LaporanScreenState extends State<LaporanScreen>
         const SizedBox(height: 10),
         EducationBarChart(perPendidikan: s.perPendidikan),
         const SizedBox(height: 20),
-
         _sectionTitle('Tingkat Pendidikan'),
         const SizedBox(height: 10),
         _buildEducationDetailTable(s),
         const SizedBox(height: 20),
-
         _sectionTitle('Status Pekerjaan'),
         const SizedBox(height: 10),
         _buildHorizontalBar(
@@ -256,24 +273,20 @@ class _LaporanScreenState extends State<LaporanScreen>
           allData.where((q) => q.dusun == dOpt['value']).toList();
           final color =
           AppTheme.dusunColors[idx % AppTheme.dusunColors.length];
-
           if (dusunData.isEmpty) return const SizedBox.shrink();
-
           final ds = _computeStats(dusunData);
-          return _buildDusunDetailCard(
-              dOpt['label']!, ds, dusunData, color);
+          return _buildDusunDetailCard(dOpt['label']!, ds, dusunData, color);
         }),
       ],
     );
   }
 
-  // ─── Helpers ────────────────────────────────────────────────────────────
+  // ─── Helpers ─────────────────────────────────────────────────────────────
 
   Widget _filterChip() {
-    final label = AppConstants.dusunOptions.firstWhere(
-          (d) => d['value'] == _filterDusun,
-      orElse: () => {'label': 'Semua'},
-    )['label']!;
+    final label = AppConstants.dusunOptions
+        .firstWhere((d) => d['value'] == _filterDusun,
+        orElse: () => {'label': 'Semua'})['label']!;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Chip(
@@ -281,56 +294,51 @@ class _LaporanScreenState extends State<LaporanScreen>
         deleteIcon: const Icon(Icons.close, size: 14),
         onDeleted: () => setState(() => _filterDusun = null),
         backgroundColor: AppTheme.primaryBlue.withOpacity(0.1),
-        labelStyle: const TextStyle(
-            color: AppTheme.primaryBlue, fontSize: 12),
+        labelStyle:
+        const TextStyle(color: AppTheme.primaryBlue, fontSize: 12),
       ),
     );
   }
 
   Widget _sectionTitle(String title) => Padding(
     padding: const EdgeInsets.only(bottom: 2),
-    child: Text(
-      title,
-      style: const TextStyle(
-        fontSize: 15,
-        fontWeight: FontWeight.bold,
-        color: AppTheme.textPrimary,
-      ),
-    ),
+    child: Text(title,
+        style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.bold,
+            color: AppTheme.textPrimary)),
   );
 
   Widget _bigStatCard(
-      String label, String value, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(0.12),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: color, size: 22),
-          const Spacer(),
-          Text(value,
-              style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: color)),
-          Text(label,
-              style: const TextStyle(
-                  fontSize: 12, color: AppTheme.textSecondary)),
-        ],
-      ),
-    );
-  }
+      String label, String value, IconData icon, Color color) =>
+      Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+                color: color.withOpacity(0.12),
+                blurRadius: 8,
+                offset: const Offset(0, 3))
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: color, size: 22),
+            const Spacer(),
+            Text(value,
+                style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: color)),
+            Text(label,
+                style: const TextStyle(
+                    fontSize: 12, color: AppTheme.textSecondary)),
+          ],
+        ),
+      );
 
   Widget _buildDusunSummaryCards(_Stats s) {
     final total = s.totalKK;
@@ -360,11 +368,10 @@ class _LaporanScreenState extends State<LaporanScreen>
                 Row(
                   children: [
                     Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                          color: color, shape: BoxShape.circle),
-                    ),
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                            color: color, shape: BoxShape.circle)),
                     const SizedBox(width: 8),
                     Expanded(
                         child: Text(d['label']!,
@@ -377,8 +384,7 @@ class _LaporanScreenState extends State<LaporanScreen>
                             fontWeight: FontWeight.bold,
                             color: color)),
                     const SizedBox(width: 6),
-                    Text(
-                        '(${(ratio * 100).toStringAsFixed(1)}%)',
+                    Text('(${(ratio * 100).toStringAsFixed(1)}%)',
                         style: const TextStyle(
                             fontSize: 10,
                             color: AppTheme.textSecondary)),
@@ -391,8 +397,7 @@ class _LaporanScreenState extends State<LaporanScreen>
                     value: ratio,
                     minHeight: 6,
                     backgroundColor: color.withOpacity(0.12),
-                    valueColor:
-                    AlwaysStoppedAnimation<Color>(color),
+                    valueColor: AlwaysStoppedAnimation<Color>(color),
                   ),
                 ),
               ],
@@ -412,20 +417,13 @@ class _LaporanScreenState extends State<LaporanScreen>
     final colors = [
       AppTheme.primaryBlue,
       AppTheme.accentOrange,
-      AppTheme.accentRed,
+      AppTheme.accentRed
     ];
     final total = s.totalKK;
-
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withOpacity(0.05), blurRadius: 6)
-        ],
-      ),
+          color: Colors.white, borderRadius: BorderRadius.circular(12)),
       child: Column(
         children: labels.entries.toList().asMap().entries.map((e) {
           final idx = e.key;
@@ -445,8 +443,7 @@ class _LaporanScreenState extends State<LaporanScreen>
                             style: const TextStyle(fontSize: 12))),
                     Text('$count',
                         style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: color)),
+                            fontWeight: FontWeight.bold, color: color)),
                   ],
                 ),
                 const SizedBox(height: 4),
@@ -456,8 +453,7 @@ class _LaporanScreenState extends State<LaporanScreen>
                     value: ratio,
                     minHeight: 8,
                     backgroundColor: color.withOpacity(0.12),
-                    valueColor:
-                    AlwaysStoppedAnimation<Color>(color),
+                    valueColor: AlwaysStoppedAnimation<Color>(color),
                   ),
                 ),
               ],
@@ -468,32 +464,24 @@ class _LaporanScreenState extends State<LaporanScreen>
     );
   }
 
-  Widget _buildHorizontalBar({
-    required Map<String, int> data,
-    required Map<String, Color> colorMap,
-  }) {
+  Widget _buildHorizontalBar(
+      {required Map<String, int> data,
+        required Map<String, Color> colorMap}) {
     if (data.isEmpty) return _emptyCard();
-    final max = data.values.reduce((a, b) => a > b ? a : b).toDouble();
+    final max =
+    data.values.reduce((a, b) => a > b ? a : b).toDouble();
     final total = data.values.fold(0, (a, b) => a + b);
-
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withOpacity(0.05), blurRadius: 6)
-        ],
-      ),
+          color: Colors.white, borderRadius: BorderRadius.circular(12)),
       child: Column(
         children: data.entries.map((e) {
           final ratio = max > 0 ? e.value / max : 0.0;
           final pct = total > 0
               ? (e.value / total * 100).toStringAsFixed(1)
               : '0';
-          final color =
-              colorMap[e.key] ?? AppTheme.primaryBlue;
+          final color = colorMap[e.key] ?? AppTheme.primaryBlue;
           return Padding(
             padding: const EdgeInsets.only(bottom: 10),
             child: Column(
@@ -502,11 +490,10 @@ class _LaporanScreenState extends State<LaporanScreen>
                 Row(
                   children: [
                     Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                          color: color, shape: BoxShape.circle),
-                    ),
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                            color: color, shape: BoxShape.circle)),
                     const SizedBox(width: 6),
                     Expanded(
                         child: Text(e.key,
@@ -530,8 +517,7 @@ class _LaporanScreenState extends State<LaporanScreen>
                     value: ratio,
                     minHeight: 7,
                     backgroundColor: color.withOpacity(0.12),
-                    valueColor:
-                    AlwaysStoppedAnimation<Color>(color),
+                    valueColor: AlwaysStoppedAnimation<Color>(color),
                   ),
                 ),
               ],
@@ -544,15 +530,12 @@ class _LaporanScreenState extends State<LaporanScreen>
 
   Widget _buildDisabilitasCard(_Stats s) {
     final total = s.totalJiwa;
-    final totalDisab = s.perDisabilitas.values
-        .fold(0, (a, b) => a + b);
-
+    final totalDisab =
+    s.perDisabilitas.values.fold(0, (a, b) => a + b);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
+          color: Colors.white, borderRadius: BorderRadius.circular(12)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -572,8 +555,7 @@ class _LaporanScreenState extends State<LaporanScreen>
           if (s.perDisabilitas.isNotEmpty) ...[
             const Divider(height: 16),
             ...s.perDisabilitas.entries.map((e) => Padding(
-              padding:
-              const EdgeInsets.only(bottom: 6),
+              padding: const EdgeInsets.only(bottom: 6),
               child: Row(
                 children: [
                   const Icon(Icons.accessible_outlined,
@@ -582,8 +564,7 @@ class _LaporanScreenState extends State<LaporanScreen>
                   const SizedBox(width: 6),
                   Expanded(
                       child: Text(e.key,
-                          style: const TextStyle(
-                              fontSize: 12))),
+                          style: const TextStyle(fontSize: 12))),
                   Text('${e.value}',
                       style: const TextStyle(
                           fontWeight: FontWeight.bold,
@@ -596,8 +577,7 @@ class _LaporanScreenState extends State<LaporanScreen>
               padding: EdgeInsets.only(top: 8),
               child: Text('Tidak ada data disabilitas',
                   style: TextStyle(
-                      color: AppTheme.textSecondary,
-                      fontSize: 12)),
+                      color: AppTheme.textSecondary, fontSize: 12)),
             ),
         ],
       ),
@@ -609,9 +589,8 @@ class _LaporanScreenState extends State<LaporanScreen>
         child: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8)),
           child: Column(
             children: [
               Text(value,
@@ -621,8 +600,7 @@ class _LaporanScreenState extends State<LaporanScreen>
                       color: color)),
               Text(label,
                   style: const TextStyle(
-                      fontSize: 10,
-                      color: AppTheme.textSecondary),
+                      fontSize: 10, color: AppTheme.textSecondary),
                   textAlign: TextAlign.center),
             ],
           ),
@@ -631,16 +609,10 @@ class _LaporanScreenState extends State<LaporanScreen>
 
   Widget _buildEducationDetailTable(_Stats s) {
     final total =
-        s.perPendidikan.values.fold(0, (a, b) => a + b);
+    s.perPendidikan.values.fold(0, (a, b) => a + b);
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withOpacity(0.05), blurRadius: 6)
-        ],
-      ),
+          color: Colors.white, borderRadius: BorderRadius.circular(12)),
       child: Table(
         columnWidths: const {
           0: FlexColumnWidth(3),
@@ -653,13 +625,11 @@ class _LaporanScreenState extends State<LaporanScreen>
             final pct = total > 0
                 ? (e.value / total * 100).toStringAsFixed(1)
                 : '0';
-            return TableRow(
-              children: [
-                _tableCell(e.key),
-                _tableCell('${e.value}', isNum: true),
-                _tableCell('$pct%', isNum: true),
-              ],
-            );
+            return TableRow(children: [
+              _tableCell(e.key),
+              _tableCell('${e.value}', isNum: true),
+              _tableCell('$pct%', isNum: true),
+            ]);
           }),
         ],
       ),
@@ -685,8 +655,7 @@ class _LaporanScreenState extends State<LaporanScreen>
         bool isNum = false,
         Color? color}) =>
       Padding(
-        padding: const EdgeInsets.symmetric(
-            horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         child: Text(
           text,
           style: TextStyle(
@@ -694,9 +663,7 @@ class _LaporanScreenState extends State<LaporanScreen>
             fontWeight:
             isHeader ? FontWeight.bold : FontWeight.normal,
             color: color ??
-                (isNum
-                    ? AppTheme.primaryBlue
-                    : AppTheme.textPrimary),
+                (isNum ? AppTheme.primaryBlue : AppTheme.textPrimary),
           ),
           textAlign: isNum ? TextAlign.center : TextAlign.left,
         ),
@@ -710,25 +677,20 @@ class _LaporanScreenState extends State<LaporanScreen>
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color.withOpacity(0.25)),
-        boxShadow: [
-          BoxShadow(
-              color: color.withOpacity(0.08), blurRadius: 8)
-        ],
       ),
       child: Theme(
         data: Theme.of(context)
             .copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
-          tilePadding: const EdgeInsets.symmetric(
-              horizontal: 14, vertical: 4),
+          tilePadding:
+          const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
           title: Row(
             children: [
               Container(
-                width: 12,
-                height: 12,
-                decoration: BoxDecoration(
-                    color: color, shape: BoxShape.circle),
-              ),
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                      color: color, shape: BoxShape.circle)),
               const SizedBox(width: 8),
               Text(dusunLabel,
                   style: TextStyle(
@@ -753,14 +715,12 @@ class _LaporanScreenState extends State<LaporanScreen>
                   Row(
                     children: [
                       Expanded(
-                          child: _miniStat('KK', '${s.totalKK}',
-                              color)),
+                          child: _miniStat('KK', '${s.totalKK}', color)),
                       Expanded(
                           child: _miniStat(
                               'Jiwa', '${s.totalJiwa}', color)),
                       Expanded(
-                          child: _miniStat(
-                              'Laki', '${s.totalL}', color)),
+                          child: _miniStat('Laki', '${s.totalL}', color)),
                       Expanded(
                           child: _miniStat(
                               'Perempuan', '${s.totalP}', color)),
@@ -775,24 +735,21 @@ class _LaporanScreenState extends State<LaporanScreen>
                             color: AppTheme.textSecondary)),
                     const SizedBox(height: 6),
                     ...s.perPetugas.entries.map((e) => Padding(
-                      padding:
-                      const EdgeInsets.only(bottom: 4),
+                      padding: const EdgeInsets.only(bottom: 4),
                       child: Row(
                         children: [
                           Icon(Icons.person_outline,
-                              size: 12,
-                              color: color),
+                              size: 12, color: color),
                           const SizedBox(width: 4),
                           Expanded(
                               child: Text(e.key,
-                                  style: const TextStyle(
-                                      fontSize: 11))),
+                                  style:
+                                  const TextStyle(fontSize: 11))),
                           Text('${e.value} KK',
                               style: TextStyle(
                                   fontSize: 11,
                                   color: color,
-                                  fontWeight:
-                                  FontWeight.bold)),
+                                  fontWeight: FontWeight.bold)),
                         ],
                       ),
                     )),
@@ -806,28 +763,24 @@ class _LaporanScreenState extends State<LaporanScreen>
     );
   }
 
-  Widget _miniStat(String label, String value, Color color) =>
-      Column(
-        children: [
-          Text(value,
-              style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: color)),
-          Text(label,
-              style: const TextStyle(
-                  fontSize: 10,
-                  color: AppTheme.textSecondary)),
-        ],
-      );
+  Widget _miniStat(String label, String value, Color color) => Column(
+    children: [
+      Text(value,
+          style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: color)),
+      Text(label,
+          style: const TextStyle(
+              fontSize: 10, color: AppTheme.textSecondary)),
+    ],
+  );
 
   Widget _emptyCard() => Container(
     height: 60,
     alignment: Alignment.center,
     decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(10),
-    ),
+        color: Colors.white, borderRadius: BorderRadius.circular(10)),
     child: const Text('Belum ada data',
         style: TextStyle(color: AppTheme.textSecondary)),
   );
@@ -846,8 +799,7 @@ class _LaporanScreenState extends State<LaporanScreen>
           children: [
             const Text('Filter Dusun',
                 style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold)),
+                    fontSize: 17, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
             ListTile(
               title: const Text('Semua Dusun'),
@@ -926,69 +878,45 @@ class _LaporanScreenState extends State<LaporanScreen>
 
     for (final q in data) {
       perDusun[q.dusunLabel] = (perDusun[q.dusunLabel] ?? 0) + 1;
-      perPetugas[q.namaPetugas] =
-          (perPetugas[q.namaPetugas] ?? 0) + 1;
+      perPetugas[q.namaPetugas] = (perPetugas[q.namaPetugas] ?? 0) + 1;
       if (q.r103 != null) {
-        perStatusKk[q.r103!] =
-            (perStatusKk[q.r103!] ?? 0) + 1;
+        perStatusKk[q.r103!] = (perStatusKk[q.r103!] ?? 0) + 1;
       }
-
       for (final a in q.r200) {
         jiwa++;
         if (a.r205 == '1') l++;
         if (a.r205 == '2') p++;
-
-        // Pendidikan
         if (a.r212 != null) {
           final label = pdkLabels[a.r212] ?? a.r212!;
-          perPendidikan[label] =
-              (perPendidikan[label] ?? 0) + 1;
+          perPendidikan[label] = (perPendidikan[label] ?? 0) + 1;
         }
-
-        // Pekerjaan
         if (a.r300Pekerjaan != null) {
           final pkLabel = a.r300Pekerjaan == '1'
               ? 'Masih Bersekolah'
               : a.r300Pekerjaan == '2'
               ? 'Sudah Bekerja'
               : 'Tidak Bekerja';
-          perPekerjaan[pkLabel] =
-              (perPekerjaan[pkLabel] ?? 0) + 1;
+          perPekerjaan[pkLabel] = (perPekerjaan[pkLabel] ?? 0) + 1;
         }
-
-        // Status kawin
         if (a.r204 != null) {
-          final kLabel =
-              kawinLabels[a.r204] ?? a.r204!;
-          perStatusKawin[kLabel] =
-              (perStatusKawin[kLabel] ?? 0) + 1;
+          final kLabel = kawinLabels[a.r204] ?? a.r204!;
+          perStatusKawin[kLabel] = (perStatusKawin[kLabel] ?? 0) + 1;
         }
-
-        // Kewarganegaraan
         if (a.r209 != null) {
           final kwLabel = a.r209 == '1' ? 'WNI' : 'WNA';
           perKewarganegaraan[kwLabel] =
               (perKewarganegaraan[kwLabel] ?? 0) + 1;
         }
-
-        // Keberadaan
         if (a.r210 != null) {
-          final kbLabel =
-              keberadaanLabels[a.r210] ?? a.r210!;
-          perKeberadaan[kbLabel] =
-              (perKeberadaan[kbLabel] ?? 0) + 1;
+          final kbLabel = keberadaanLabels[a.r210] ?? a.r210!;
+          perKeberadaan[kbLabel] = (perKeberadaan[kbLabel] ?? 0) + 1;
         }
-
-        // Disabilitas
         if (a.r211 != null) {
           for (final code in a.r211!) {
             final dLabel = disabLabels[code] ?? code;
-            perDisabilitas[dLabel] =
-                (perDisabilitas[dLabel] ?? 0) + 1;
+            perDisabilitas[dLabel] = (perDisabilitas[dLabel] ?? 0) + 1;
           }
         }
-
-        // Kelompok usia
         if (a.r207Usia != null) {
           final usia = a.r207Usia!;
           final bucket = usia < 5
@@ -1002,8 +930,7 @@ class _LaporanScreenState extends State<LaporanScreen>
               : usia < 60
               ? '40–59'
               : '60+';
-          kelompokUsia[bucket] =
-              (kelompokUsia[bucket] ?? 0) + 1;
+          kelompokUsia[bucket] = (kelompokUsia[bucket] ?? 0) + 1;
         }
       }
     }

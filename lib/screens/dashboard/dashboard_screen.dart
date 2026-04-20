@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../models/questionnaire.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/questionnaire_provider.dart';
+import '../../services/permissions_service.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/stat_card.dart';
 import '../../widgets/chart_widgets.dart';
@@ -34,6 +35,39 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // ── Permission guard: jika dashboard dimatikan, tampilkan layar akses ditolak
+    if (!PermissionsService.instance.can(AppFeatures.dashboard)) {
+      return Scaffold(
+        backgroundColor: AppTheme.bgLight,
+        appBar: AppBar(
+          title: const Text('Dashboard'),
+          backgroundColor: AppTheme.primaryBlue,
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.lock_outline, size: 72, color: Colors.grey[300]),
+              const SizedBox(height: 16),
+              Text(
+                'Akses Ditolak',
+                style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey[600]),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Anda tidak memiliki izin\nuntuk mengakses Dashboard.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: Colors.grey[400]),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppTheme.bgLight,
       body: RefreshIndicator(
@@ -155,11 +189,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Filter chip
               if (_filterDusun != null) _buildFilterChip(),
               const SizedBox(height: 4),
-
-              // Stats cards row 1
               Row(
                 children: [
                   Expanded(
@@ -182,8 +213,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ],
               ),
               const SizedBox(height: 12),
-
-              // Stats cards row 2
               Row(
                 children: [
                   Expanded(
@@ -206,14 +235,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ],
               ),
               const SizedBox(height: 20),
-
-              // Progress per dusun
               _buildSectionTitle('Progress Pendataan per Dusun'),
               const SizedBox(height: 12),
               _buildDusunProgressCards(stats),
               const SizedBox(height: 20),
-
-              // Distribusi gender chart
               _buildSectionTitle('Distribusi Jenis Kelamin'),
               const SizedBox(height: 12),
               GenderPieChart(
@@ -221,14 +246,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 perempuan: stats.totalPerempuan,
               ),
               const SizedBox(height: 20),
-
-              // Progress per petugas
               _buildSectionTitle('Progress per Petugas'),
               const SizedBox(height: 12),
               OfficerProgressChart(perPetugas: stats.perPetugas),
               const SizedBox(height: 20),
-
-              // Pendidikan chart
               if (stats.perPendidikan.isNotEmpty) ...[
                 _buildSectionTitle('Distribusi Pendidikan'),
                 const SizedBox(height: 12),
@@ -308,7 +329,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(label,
-                        style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                        style: const TextStyle(
+                            fontSize: 11, color: AppTheme.textSecondary)),
                   ),
                 ],
               ),
@@ -356,7 +378,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
             ...AppConstants.dusunOptions.map(
-              (d) => ListTile(
+                  (d) => ListTile(
                 title: Text(d['label']!),
                 leading: Radio<String?>(
                   value: d['value'],
