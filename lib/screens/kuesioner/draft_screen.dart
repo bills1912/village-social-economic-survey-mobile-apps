@@ -62,6 +62,14 @@ class _DraftScreenState extends State<DraftScreen> {
     final updatedAt = draft['updated_at'] as String?;
     final id = draft['id'] as int;
 
+    // dusun sekarang teks bebas — ambil dari model jika ada,
+    // fallback ke kolom 'dusun' di tabel draft, lalu '-'
+    final dusunLabel = (q?.dusun != null && q!.dusun!.isNotEmpty)
+        ? q.dusun!
+        : ((draft['dusun'] as String?)?.isNotEmpty == true
+        ? draft['dusun'] as String
+        : '-');
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
@@ -89,7 +97,7 @@ class _DraftScreenState extends State<DraftScreen> {
           children: [
             const SizedBox(height: 2),
             Text(
-              'No. KK: ${q?.r102 ?? draft['r_102'] ?? '-'}  ·  ${q?.dusunLabel ?? '-'}',
+              'No. KK: ${q?.r102 ?? draft['r_102'] ?? '-'}  ·  $dusunLabel',
               style: const TextStyle(
                   fontSize: 12, color: AppTheme.textSecondary),
             ),
@@ -97,8 +105,8 @@ class _DraftScreenState extends State<DraftScreen> {
               const SizedBox(height: 2),
               Text(
                 'Terakhir diubah: ${_formatDate(updatedAt)}',
-                style: TextStyle(
-                    fontSize: 11, color: Colors.grey[400]),
+                style:
+                TextStyle(fontSize: 11, color: Colors.grey[400]),
               ),
             ],
           ],
@@ -170,12 +178,12 @@ class _DraftScreenState extends State<DraftScreen> {
         Icon(Icons.drafts_outlined, size: 72, color: Colors.grey[300]),
         const SizedBox(height: 14),
         Text('Tidak ada draft tersimpan',
-            style: TextStyle(
-                color: Colors.grey[500], fontSize: 16)),
+            style:
+            TextStyle(color: Colors.grey[500], fontSize: 16)),
         const SizedBox(height: 6),
         Text('Draft dibuat otomatis saat mengisi form',
-            style: TextStyle(
-                color: Colors.grey[400], fontSize: 13)),
+            style:
+            TextStyle(color: Colors.grey[400], fontSize: 13)),
       ],
     ),
   );

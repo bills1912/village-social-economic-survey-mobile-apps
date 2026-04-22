@@ -347,6 +347,19 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(children: [
+        // ── Waktu Wawancara ─────────────────────────────────────────────────────
+        _section('Waktu Wawancara', Icons.schedule_outlined, [
+          _waktuButton(
+            label: 'Catat Waktu Mulai', icon: Icons.play_circle_outline,
+            color: AppTheme.accentGreen, recorded: _waktuMulai,
+            onTap: () => setState(() { _waktuMulai = DateTime.now(); _snack('Waktu mulai: ${_fmtDateTime(_waktuMulai!)}'); }),
+            onReset: () => setState(() => _waktuMulai = null),
+          ),
+          const SizedBox(height: 4),
+          const Text('Waktu Selesai dicatat di langkah Konfirmasi.',
+              style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+        ]),
+        const SizedBox(height: 16),
 
         // ── Wilayah ────────────────────────────────────────────────────────────
         _section('Wilayah Administratif', Icons.map_outlined, [
@@ -429,20 +442,6 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
               onChanged: (v) => setState(() => _sudahUrusKk = v),
             ),
           ],
-        ]),
-        const SizedBox(height: 16),
-
-        // ── Waktu Wawancara ─────────────────────────────────────────────────────
-        _section('Waktu Wawancara', Icons.schedule_outlined, [
-          _waktuButton(
-            label: 'Catat Waktu Mulai', icon: Icons.play_circle_outline,
-            color: AppTheme.accentGreen, recorded: _waktuMulai,
-            onTap: () => setState(() { _waktuMulai = DateTime.now(); _snack('Waktu mulai: ${_fmtDateTime(_waktuMulai!)}'); }),
-            onReset: () => setState(() => _waktuMulai = null),
-          ),
-          const SizedBox(height: 4),
-          const Text('Waktu Selesai dicatat di langkah Konfirmasi.',
-              style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
         ]),
         const SizedBox(height: 16),
 

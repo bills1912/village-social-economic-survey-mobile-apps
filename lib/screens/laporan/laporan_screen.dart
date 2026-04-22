@@ -37,7 +37,6 @@ class _LaporanScreenState extends State<LaporanScreen>
 
   @override
   Widget build(BuildContext context) {
-    // ── Permission guard ────────────────────────────────────────────────────
     if (!PermissionsService.instance.can(AppFeatures.reports)) {
       return Scaffold(
         backgroundColor: AppTheme.bgLight,
@@ -105,7 +104,7 @@ class _LaporanScreenState extends State<LaporanScreen>
     );
   }
 
-  // ── Access denied widget ──────────────────────────────────────────────────
+  // ── Access denied ─────────────────────────────────────────────────────────
   Widget _buildAccessDenied(String feature) => Center(
     child: Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -260,22 +259,40 @@ class _LaporanScreenState extends State<LaporanScreen>
   }
 
   // ─── TAB 4 : Per Dusun ───────────────────────────────────────────────────
+  // Dusun sekarang teks bebas — kumpulkan dari data aktual, tidak pakai
+  // AppConstants.dusunOptions lagi
   Widget _buildPerDusunTab(List<Questionnaire> allData) {
+    // Kelompokkan berdasarkan dusun (teks bebas) atau nama desa jika dusun kosong
+    final dusunMap = <String, List<Questionnaire>>{};
+    for (final q in allData) {
+      final key = (q.dusun != null && q.dusun!.isNotEmpty)
+          ? q.dusun!
+          : (q.wilayah.namaDesa ?? 'Tidak Diketahui');
+      dusunMap.putIfAbsent(key, () => []).add(q);
+    }
+
+    if (dusunMap.isEmpty) {
+      return Center(
+        child: Text('Belum ada data',
+            style: TextStyle(color: Colors.grey[400])),
+      );
+    }
+
+    final sortedKeys = dusunMap.keys.toList()..sort();
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
         _sectionTitle('Detail per Dusun'),
         const SizedBox(height: 10),
-        ...AppConstants.dusunOptions.asMap().entries.map((entry) {
+        ...sortedKeys.asMap().entries.map((entry) {
           final idx = entry.key;
-          final dOpt = entry.value;
-          final dusunData =
-          allData.where((q) => q.dusun == dOpt['value']).toList();
+          final key = entry.value;
+          final dusunData = dusunMap[key]!;
           final color =
           AppTheme.dusunColors[idx % AppTheme.dusunColors.length];
-          if (dusunData.isEmpty) return const SizedBox.shrink();
           final ds = _computeStats(dusunData);
-          return _buildDusunDetailCard(dOpt['label']!, ds, dusunData, color);
+          return _buildDusunDetailCard(key, ds, dusunData, color);
         }),
       ],
     );
@@ -284,13 +301,10 @@ class _LaporanScreenState extends State<LaporanScreen>
   // ─── Helpers ─────────────────────────────────────────────────────────────
 
   Widget _filterChip() {
-    final label = AppConstants.dusunOptions
-        .firstWhere((d) => d['value'] == _filterDusun,
-        orElse: () => {'label': 'Semua'})['label']!;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Chip(
-        label: Text('Filter: $label'),
+        label: Text('Filter: ${_filterDusun!}'),
         deleteIcon: const Icon(Icons.close, size: 14),
         onDeleted: () => setState(() => _filterDusun = null),
         backgroundColor: AppTheme.primaryBlue.withOpacity(0.1),
@@ -340,24 +354,29 @@ class _LaporanScreenState extends State<LaporanScreen>
         ),
       );
 
+  // Distribusi KK per dusun — key dari _computeStats sudah teks bebas
   Widget _buildDusunSummaryCards(_Stats s) {
     final total = s.totalKK;
+    final sortedEntries = s.perDusun.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
-          BoxShadow(
-              color: Colors.black.withOpacity(0.05), blurRadius: 6)
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6)
         ],
       ),
-      child: Column(
-        children: AppConstants.dusunOptions.asMap().entries.map((e) {
+      child: sortedEntries.isEmpty
+          ? const Text('Belum ada data',
+          style: TextStyle(color: AppTheme.textSecondary))
+          : Column(
+        children: sortedEntries.asMap().entries.map((e) {
           final idx = e.key;
-          final d = e.value;
-          final count = s.perDusun[d['label']!] ?? 0;
-          final ratio = total > 0 ? count / total : 0.0;
+          final entry = e.value;
+          final ratio = total > 0 ? entry.value / total : 0.0;
           final color =
           AppTheme.dusunColors[idx % AppTheme.dusunColors.length];
           return Padding(
@@ -374,11 +393,11 @@ class _LaporanScreenState extends State<LaporanScreen>
                             color: color, shape: BoxShape.circle)),
                     const SizedBox(width: 8),
                     Expanded(
-                        child: Text(d['label']!,
+                        child: Text(entry.key,
                             style: const TextStyle(
                                 fontSize: 12,
                                 color: AppTheme.textPrimary))),
-                    Text('$count KK',
+                    Text('${entry.value} KK',
                         style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
@@ -410,14 +429,14 @@ class _LaporanScreenState extends State<LaporanScreen>
 
   Widget _buildStatusKkChart(_Stats s) {
     final labels = {
-      '1': 'KK Suka Makmur',
-      '2': 'Bukan KK Suka Makmur',
+      '1': 'KK Desa',
+      '2': 'Bukan KK Desa',
       '3': 'Belum Punya KK',
     };
     final colors = [
       AppTheme.primaryBlue,
       AppTheme.accentOrange,
-      AppTheme.accentRed
+      AppTheme.accentRed,
     ];
     final total = s.totalKK;
     return Container(
@@ -559,8 +578,7 @@ class _LaporanScreenState extends State<LaporanScreen>
               child: Row(
                 children: [
                   const Icon(Icons.accessible_outlined,
-                      size: 14,
-                      color: AppTheme.textSecondary),
+                      size: 14, color: AppTheme.textSecondary),
                   const SizedBox(width: 6),
                   Expanded(
                       child: Text(e.key,
@@ -639,21 +657,17 @@ class _LaporanScreenState extends State<LaporanScreen>
   TableRow _tableHeader() => TableRow(
     decoration: const BoxDecoration(
       color: AppTheme.primaryBlue,
-      borderRadius:
-      BorderRadius.vertical(top: Radius.circular(12)),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
     ),
     children: [
-      _tableCell('Pendidikan',
-          isHeader: true, color: Colors.white),
+      _tableCell('Pendidikan', isHeader: true, color: Colors.white),
       _tableCell('Jiwa', isHeader: true, color: Colors.white),
       _tableCell('%', isHeader: true, color: Colors.white),
     ],
   );
 
   Widget _tableCell(String text,
-      {bool isHeader = false,
-        bool isNum = false,
-        Color? color}) =>
+      {bool isHeader = false, bool isNum = false, Color? color}) =>
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         child: Text(
@@ -692,11 +706,13 @@ class _LaporanScreenState extends State<LaporanScreen>
                   decoration: BoxDecoration(
                       color: color, shape: BoxShape.circle)),
               const SizedBox(width: 8),
-              Text(dusunLabel,
-                  style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: color,
-                      fontSize: 14)),
+              Expanded(
+                child: Text(dusunLabel,
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: color,
+                        fontSize: 14)),
+              ),
             ],
           ),
           subtitle: Text(
@@ -715,12 +731,14 @@ class _LaporanScreenState extends State<LaporanScreen>
                   Row(
                     children: [
                       Expanded(
-                          child: _miniStat('KK', '${s.totalKK}', color)),
+                          child:
+                          _miniStat('KK', '${s.totalKK}', color)),
                       Expanded(
                           child: _miniStat(
                               'Jiwa', '${s.totalJiwa}', color)),
                       Expanded(
-                          child: _miniStat('Laki', '${s.totalL}', color)),
+                          child:
+                          _miniStat('Laki', '${s.totalL}', color)),
                       Expanded(
                           child: _miniStat(
                               'Perempuan', '${s.totalP}', color)),
@@ -743,8 +761,8 @@ class _LaporanScreenState extends State<LaporanScreen>
                           const SizedBox(width: 4),
                           Expanded(
                               child: Text(e.key,
-                                  style:
-                                  const TextStyle(fontSize: 11))),
+                                  style: const TextStyle(
+                                      fontSize: 11))),
                           Text('${e.value} KK',
                               style: TextStyle(
                                   fontSize: 11,
@@ -785,7 +803,18 @@ class _LaporanScreenState extends State<LaporanScreen>
         style: TextStyle(color: AppTheme.textSecondary)),
   );
 
+  // Filter sheet — daftar dusun diambil dari data aktual, bukan hardcode
   void _showFilterSheet() {
+    final allData =
+        context.read<QuestionnaireProvider>().questionnaires;
+    final dusunList = allData
+        .map((q) => q.dusun)
+        .whereType<String>()
+        .where((d) => d.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -813,10 +842,10 @@ class _LaporanScreenState extends State<LaporanScreen>
                 },
               ),
             ),
-            ...AppConstants.dusunOptions.map((d) => ListTile(
-              title: Text(d['label']!),
+            ...dusunList.map((d) => ListTile(
+              title: Text(d),
               leading: Radio<String?>(
-                value: d['value'],
+                value: d,
                 groupValue: _filterDusun,
                 activeColor: AppTheme.primaryBlue,
                 onChanged: (v) {
@@ -877,8 +906,15 @@ class _LaporanScreenState extends State<LaporanScreen>
     };
 
     for (final q in data) {
-      perDusun[q.dusunLabel] = (perDusun[q.dusunLabel] ?? 0) + 1;
-      perPetugas[q.namaPetugas] = (perPetugas[q.namaPetugas] ?? 0) + 1;
+      // dusun sekarang teks bebas — gunakan langsung sebagai key,
+      // fallback ke nama desa jika kosong
+      final dusunKey = (q.dusun != null && q.dusun!.isNotEmpty)
+          ? q.dusun!
+          : (q.wilayah.namaDesa ?? 'Tidak Diketahui');
+      perDusun[dusunKey] = (perDusun[dusunKey] ?? 0) + 1;
+
+      perPetugas[q.namaPetugas] =
+          (perPetugas[q.namaPetugas] ?? 0) + 1;
       if (q.r103 != null) {
         perStatusKk[q.r103!] = (perStatusKk[q.r103!] ?? 0) + 1;
       }
@@ -896,11 +932,13 @@ class _LaporanScreenState extends State<LaporanScreen>
               : a.r300Pekerjaan == '2'
               ? 'Sudah Bekerja'
               : 'Tidak Bekerja';
-          perPekerjaan[pkLabel] = (perPekerjaan[pkLabel] ?? 0) + 1;
+          perPekerjaan[pkLabel] =
+              (perPekerjaan[pkLabel] ?? 0) + 1;
         }
         if (a.r204 != null) {
           final kLabel = kawinLabels[a.r204] ?? a.r204!;
-          perStatusKawin[kLabel] = (perStatusKawin[kLabel] ?? 0) + 1;
+          perStatusKawin[kLabel] =
+              (perStatusKawin[kLabel] ?? 0) + 1;
         }
         if (a.r209 != null) {
           final kwLabel = a.r209 == '1' ? 'WNI' : 'WNA';
@@ -909,12 +947,14 @@ class _LaporanScreenState extends State<LaporanScreen>
         }
         if (a.r210 != null) {
           final kbLabel = keberadaanLabels[a.r210] ?? a.r210!;
-          perKeberadaan[kbLabel] = (perKeberadaan[kbLabel] ?? 0) + 1;
+          perKeberadaan[kbLabel] =
+              (perKeberadaan[kbLabel] ?? 0) + 1;
         }
         if (a.r211 != null) {
           for (final code in a.r211!) {
             final dLabel = disabLabels[code] ?? code;
-            perDisabilitas[dLabel] = (perDisabilitas[dLabel] ?? 0) + 1;
+            perDisabilitas[dLabel] =
+                (perDisabilitas[dLabel] ?? 0) + 1;
           }
         }
         if (a.r207Usia != null) {
@@ -930,7 +970,8 @@ class _LaporanScreenState extends State<LaporanScreen>
               : usia < 60
               ? '40–59'
               : '60+';
-          kelompokUsia[bucket] = (kelompokUsia[bucket] ?? 0) + 1;
+          kelompokUsia[bucket] =
+              (kelompokUsia[bucket] ?? 0) + 1;
         }
       }
     }

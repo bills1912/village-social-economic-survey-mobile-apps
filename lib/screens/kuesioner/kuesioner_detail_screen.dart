@@ -29,7 +29,14 @@ class KuesionerDetailScreen extends StatelessWidget {
             // KK Info
             _buildSection('Informasi Kartu Keluarga', [
               _infoRow('No. KK', q.r102),
-              _infoRow('Dusun', q.dusunLabel),
+              _infoRow(
+                'Dusun',
+                q.dusun != null && q.dusun!.isNotEmpty ? q.dusun! : '-',
+              ),
+              _infoRow('Desa', q.wilayah.namaDesa ?? '-'),
+              _infoRow('Kecamatan', q.wilayah.namaKecamatan ?? '-'),
+              _infoRow('Kab/Kota', q.wilayah.namaKabupaten ?? '-'),
+              _infoRow('Provinsi', q.wilayah.namaProvinsi ?? '-'),
               _infoRow('Status KK', q.statusKkLabel),
               if (q.r104 != null)
                 _infoRow('Proses KK', q.r104 == '1' ? 'Sudah' : 'Belum'),
@@ -67,13 +74,19 @@ class KuesionerDetailScreen extends StatelessWidget {
 
   Widget _buildHeaderCard(Questionnaire q) {
     final kk = q.kepalaKeluarga;
-    final dusunIdx = (int.tryParse(q.dusun) ?? 1) - 1;
-    final color = AppTheme.dusunColors[dusunIdx % AppTheme.dusunColors.length];
+    // dusun sekarang teks bebas, tidak bisa parse ke index warna
+    // gunakan warna default
+    const color = AppTheme.primaryLight;
+
+    // Label lokasi: tampilkan dusun jika ada, fallback ke nama desa
+    final lokasiLabel = (q.dusun != null && q.dusun!.isNotEmpty)
+        ? q.dusun!
+        : (q.wilayah.namaDesa ?? '-');
 
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
+        gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [AppTheme.primaryBlue, color],
@@ -108,7 +121,7 @@ class KuesionerDetailScreen extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      q.dusunLabel,
+                      lokasiLabel,
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.8),
                         fontSize: 13,

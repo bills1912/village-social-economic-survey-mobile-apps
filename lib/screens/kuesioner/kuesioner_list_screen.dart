@@ -94,14 +94,16 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
               child: Wrap(
                 children: [
                   Chip(
-                    label: Text(_getDusunLabel(_filterDusun!)),
+                    // dusun sekarang teks bebas, langsung tampilkan
+                    label: Text(_filterDusun!),
                     deleteIcon: const Icon(Icons.close, size: 14),
                     onDeleted: () {
                       setState(() => _filterDusun = null);
                       context.read<QuestionnaireProvider>().loadQuestionnaires();
                     },
                     backgroundColor: AppTheme.primaryBlue.withOpacity(0.1),
-                    labelStyle: const TextStyle(color: AppTheme.primaryBlue, fontSize: 12),
+                    labelStyle: const TextStyle(
+                        color: AppTheme.primaryBlue, fontSize: 12),
                   ),
                 ],
               ),
@@ -117,11 +119,14 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
 
                 var list = prov.questionnaires;
                 if (_filterDusun != null) {
-                  list = list.where((q) => q.dusun == _filterDusun).toList();
+                  list = list
+                      .where((q) => q.dusun == _filterDusun)
+                      .toList();
                 }
                 if (_search.isNotEmpty) {
                   list = list.where((q) {
-                    final kk = q.kepalaKeluarga?.r201?.toLowerCase() ?? '';
+                    final kk =
+                        q.kepalaKeluarga?.r201?.toLowerCase() ?? '';
                     return q.r102.contains(_search) ||
                         kk.contains(_search) ||
                         q.namaPetugas.toLowerCase().contains(_search);
@@ -131,7 +136,8 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
                 if (list.isEmpty) return _buildEmpty();
 
                 return RefreshIndicator(
-                  onRefresh: () => prov.loadQuestionnaires(dusun: _filterDusun),
+                  onRefresh: () =>
+                      prov.loadQuestionnaires(dusun: _filterDusun),
                   child: ListView.builder(
                     padding: const EdgeInsets.all(16),
                     itemCount: list.length,
@@ -149,8 +155,11 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
         child: FloatingActionButton.extended(
           onPressed: () => Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const KuesionerFormScreen()),
-          ).then((_) => context.read<QuestionnaireProvider>().loadQuestionnaires()),
+            MaterialPageRoute(
+                builder: (_) => const KuesionerFormScreen()),
+          ).then((_) => context
+              .read<QuestionnaireProvider>()
+              .loadQuestionnaires()),
           backgroundColor: AppTheme.primaryBlue,
           foregroundColor: Colors.white,
           icon: const Icon(Icons.add),
@@ -167,15 +176,22 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
     final kk = q.kepalaKeluarga;
     final ps = PermissionsService.instance;
 
+    // Label lokasi: dusun (teks bebas) jika ada, fallback ke nama desa
+    final lokasiLabel = (q.dusun != null && q.dusun!.isNotEmpty)
+        ? q.dusun!
+        : (q.wilayah.namaDesa ?? '-');
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape:
+      RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => KuesionerDetailScreen(questionnaire: q),
+            builder: (_) =>
+                KuesionerDetailScreen(questionnaire: q),
           ),
         ),
         child: Padding(
@@ -186,12 +202,14 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
               Row(
                 children: [
                   Container(
-                    width: 44, height: 44,
+                    width: 44,
+                    height: 44,
                     decoration: BoxDecoration(
                       color: AppTheme.primaryBlue.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.home_outlined, color: AppTheme.primaryBlue, size: 22),
+                    child: const Icon(Icons.home_outlined,
+                        color: AppTheme.primaryBlue, size: 22),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -201,103 +219,123 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
                         Text(
                           kk?.r201 ?? 'Tidak ada Kepala Keluarga',
                           style: const TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
                             color: AppTheme.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 2),
                         Text('No. KK: ${q.r102}',
-                            style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                            style: const TextStyle(
+                                fontSize: 12,
+                                color: AppTheme.textSecondary)),
                       ],
                     ),
                   ),
-                  _buildDusunBadge(q.dusun),
+                  _buildDusunBadge(lokasiLabel),
                 ],
               ),
               const Divider(height: 20),
               Row(
                 children: [
-                  _infoChip(Icons.people_outline, '${q.jumlahAnggota} anggota'),
+                  _infoChip(Icons.people_outline,
+                      '${q.jumlahAnggota} anggota'),
                   const SizedBox(width: 8),
                   _infoChip(Icons.male, '${q.jumlahLakiLaki} L'),
                   const SizedBox(width: 8),
                   _infoChip(Icons.female, '${q.jumlahPerempuan} P'),
                   const Spacer(),
                   Text(q.namaPetugas,
-                      style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                      style: const TextStyle(
+                          fontSize: 11,
+                          color: AppTheme.textSecondary)),
                 ],
               ),
               if (q.createdAt != null) ...[
                 const SizedBox(height: 6),
                 Text(_formatDate(q.createdAt!),
-                    style: TextStyle(fontSize: 11, color: Colors.grey[400])),
+                    style: TextStyle(
+                        fontSize: 11, color: Colors.grey[400])),
               ],
 
-              // ── Tombol aksi — hanya tampil sesuai permission ─────────────
+              // ── Tombol aksi ───────────────────────────────────────────
               const SizedBox(height: 10),
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  // Detail — selalu tampil jika punya questionnaire_view
                   OutlinedButton.icon(
                     onPressed: () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => KuesionerDetailScreen(questionnaire: q),
+                        builder: (_) =>
+                            KuesionerDetailScreen(questionnaire: q),
                       ),
                     ),
-                    icon: const Icon(Icons.visibility_outlined, size: 16),
-                    label: const Text('Detail', style: TextStyle(fontSize: 12)),
+                    icon: const Icon(Icons.visibility_outlined,
+                        size: 16),
+                    label: const Text('Detail',
+                        style: TextStyle(fontSize: 12)),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppTheme.primaryBlue,
-                      side: const BorderSide(color: AppTheme.primaryBlue),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      side:
+                      const BorderSide(color: AppTheme.primaryBlue),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
                       minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      tapTargetSize:
+                      MaterialTapTargetSize.shrinkWrap,
                     ),
                   ),
 
-                  // Edit
                   if (ps.can(AppFeatures.questionnaireEdit)) ...[
                     const SizedBox(width: 8),
                     ElevatedButton.icon(
                       onPressed: () => Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => KuesionerFormScreen(existingData: q),
+                          builder: (_) =>
+                              KuesionerFormScreen(existingData: q),
                         ),
                       ).then((result) {
                         if (result == true) {
-                          context.read<QuestionnaireProvider>()
-                              .loadQuestionnaires(dusun: _filterDusun);
+                          context
+                              .read<QuestionnaireProvider>()
+                              .loadQuestionnaires(
+                              dusun: _filterDusun);
                         }
                       }),
                       icon: const Icon(Icons.edit_outlined, size: 16),
-                      label: const Text('Edit', style: TextStyle(fontSize: 12)),
+                      label: const Text('Edit',
+                          style: TextStyle(fontSize: 12)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.primaryBlue,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
                         minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        tapTargetSize:
+                        MaterialTapTargetSize.shrinkWrap,
                         elevation: 0,
                       ),
                     ),
                   ],
 
-                  // Hapus
                   if (ps.can(AppFeatures.questionnaireDelete)) ...[
                     const SizedBox(width: 8),
                     OutlinedButton.icon(
                       onPressed: () => _confirmDelete(q),
                       icon: const Icon(Icons.delete_outline, size: 16),
-                      label: const Text('Hapus', style: TextStyle(fontSize: 12)),
+                      label: const Text('Hapus',
+                          style: TextStyle(fontSize: 12)),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppTheme.accentRed,
-                        side: const BorderSide(color: AppTheme.accentRed),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        side: const BorderSide(
+                            color: AppTheme.accentRed),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
                         minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        tapTargetSize:
+                        MaterialTapTargetSize.shrinkWrap,
                       ),
                     ),
                   ],
@@ -312,12 +350,18 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
 
   void _confirmDelete(Questionnaire q) {
     final namaKk = q.kepalaKeluarga?.r201 ?? 'responden ini';
+    final lokasiLabel = (q.dusun != null && q.dusun!.isNotEmpty)
+        ? q.dusun!
+        : (q.wilayah.namaDesa ?? '-');
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16)),
         title: const Row(children: [
-          Icon(Icons.warning_amber_rounded, color: AppTheme.accentRed, size: 22),
+          Icon(Icons.warning_amber_rounded,
+              color: AppTheme.accentRed, size: 22),
           SizedBox(width: 8),
           Text('Hapus Data?', style: TextStyle(fontSize: 17)),
         ]),
@@ -326,7 +370,8 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Anda akan menghapus data keluarga:',
-                style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+                style:
+                TextStyle(color: Colors.grey[600], fontSize: 13)),
             const SizedBox(height: 8),
             Container(
               width: double.infinity,
@@ -334,38 +379,57 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
               decoration: BoxDecoration(
                 color: AppTheme.accentRed.withOpacity(0.07),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppTheme.accentRed.withOpacity(0.25)),
+                border: Border.all(
+                    color: AppTheme.accentRed.withOpacity(0.25)),
               ),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(namaKk, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                const SizedBox(height: 2),
-                Text('No. KK: ${q.r102}  ·  ${q.dusunLabel}',
-                    style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
-              ]),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(namaKk,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14)),
+                    const SizedBox(height: 2),
+                    Text(
+                      'No. KK: ${q.r102}  ·  $lokasiLabel',
+                      style: const TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textSecondary),
+                    ),
+                  ]),
             ),
             const SizedBox(height: 10),
             const Text('Tindakan ini tidak dapat dibatalkan.',
-                style: TextStyle(color: AppTheme.accentRed, fontSize: 12, fontWeight: FontWeight.w500)),
+                style: TextStyle(
+                    color: AppTheme.accentRed,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500)),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Batal')),
           ElevatedButton.icon(
             onPressed: () async {
               Navigator.pop(ctx);
-              final prov = context.read<QuestionnaireProvider>();
-              final ok = await prov.deleteQuestionnaire(q);
+              final prov =
+              context.read<QuestionnaireProvider>();
+              final ok =
+              await prov.deleteQuestionnaire(q);
               if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                 content: Text(ok
                     ? 'Data "$namaKk" berhasil dihapus'
                     : 'Gagal menghapus: ${prov.error}'),
-                backgroundColor: ok ? AppTheme.accentGreen : AppTheme.accentRed,
+                backgroundColor:
+                ok ? AppTheme.accentGreen : AppTheme.accentRed,
                 behavior: SnackBarBehavior.floating,
               ));
             },
             style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.accentRed, foregroundColor: Colors.white),
+                backgroundColor: AppTheme.accentRed,
+                foregroundColor: Colors.white),
             icon: const Icon(Icons.delete, size: 16),
             label: const Text('Hapus'),
           ),
@@ -374,16 +438,23 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
     );
   }
 
-  Widget _buildDusunBadge(String dusun) {
-    final idx = int.tryParse(dusun) ?? 1;
-    final color = AppTheme.dusunColors[(idx - 1) % AppTheme.dusunColors.length];
+  /// Badge dusun — dusun sekarang teks bebas, tidak ada lookup ke dusunOptions
+  Widget _buildDusunBadge(String label) {
+    if (label == '-' || label.isEmpty) return const SizedBox.shrink();
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(8),
+        color: AppTheme.primaryBlue.withOpacity(0.10),
+        borderRadius: BorderRadius.circular(8),
       ),
-      child: Text(_getDusunLabel(dusun),
-          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color)),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+          color: AppTheme.primaryBlue,
+        ),
+      ),
     );
   }
 
@@ -392,7 +463,9 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
     children: [
       Icon(icon, size: 12, color: AppTheme.textSecondary),
       const SizedBox(width: 3),
-      Text(label, style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+      Text(label,
+          style: const TextStyle(
+              fontSize: 11, color: AppTheme.textSecondary)),
     ],
   );
 
@@ -403,7 +476,9 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
         Icon(Icons.assignment_outlined, size: 72, color: Colors.grey[300]),
         const SizedBox(height: 16),
         Text(
-          _search.isNotEmpty ? 'Tidak ada hasil pencarian' : 'Belum ada data kuesioner',
+          _search.isNotEmpty
+              ? 'Tidak ada hasil pencarian'
+              : 'Belum ada data kuesioner',
           style: TextStyle(color: Colors.grey[500], fontSize: 16),
         ),
         const SizedBox(height: 8),
@@ -413,21 +488,32 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
     ),
   );
 
-  String _getDusunLabel(String dusun) => AppConstants.dusunOptions
-      .firstWhere((d) => d['value'] == dusun,
-      orElse: () => {'label': 'Dusun $dusun'})['label']!;
-
   String _formatDate(DateTime dt) {
-    final months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
+    final months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+      'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'
+    ];
     return '${dt.day} ${months[dt.month - 1]} ${dt.year},'
         ' ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
   }
 
   void _showFilter() {
+    // Kumpulkan daftar dusun unik dari data yang ada
+    final dusunList = context
+        .read<QuestionnaireProvider>()
+        .questionnaires
+        .map((q) => q.dusun)
+        .whereType<String>()
+        .where((d) => d.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+          borderRadius:
+          BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -435,32 +521,41 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text('Filter Dusun',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                style: TextStyle(
+                    fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
             ListTile(
               title: const Text('Semua Dusun'),
               leading: Radio<String?>(
-                value: null, groupValue: _filterDusun,
+                value: null,
+                groupValue: _filterDusun,
                 activeColor: AppTheme.primaryBlue,
                 onChanged: (v) {
                   setState(() => _filterDusun = v);
                   Navigator.pop(ctx);
-                  context.read<QuestionnaireProvider>().loadQuestionnaires();
+                  context
+                      .read<QuestionnaireProvider>()
+                      .loadQuestionnaires();
                 },
               ),
             ),
-            ...AppConstants.dusunOptions.map((d) => ListTile(
-              title: Text(d['label']!),
-              leading: Radio<String?>(
-                value: d['value'], groupValue: _filterDusun,
-                activeColor: AppTheme.primaryBlue,
-                onChanged: (v) {
-                  setState(() => _filterDusun = v);
-                  Navigator.pop(ctx);
-                  context.read<QuestionnaireProvider>().loadQuestionnaires(dusun: v);
-                },
+            ...dusunList.map(
+                  (d) => ListTile(
+                title: Text(d),
+                leading: Radio<String?>(
+                  value: d,
+                  groupValue: _filterDusun,
+                  activeColor: AppTheme.primaryBlue,
+                  onChanged: (v) {
+                    setState(() => _filterDusun = v);
+                    Navigator.pop(ctx);
+                    context
+                        .read<QuestionnaireProvider>()
+                        .loadQuestionnaires(dusun: v);
+                  },
+                ),
               ),
-            )),
+            ),
           ],
         ),
       ),
