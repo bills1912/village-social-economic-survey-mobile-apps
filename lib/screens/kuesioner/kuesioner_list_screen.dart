@@ -23,7 +23,6 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
   String _search = '';
   String? _filterDusun;
 
-  // ── Pagination ──────────────────────────────────────────────────────────
   static const int _pageSize = 10;
   int _currentPage = 1;
 
@@ -40,16 +39,12 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
     super.dispose();
   }
 
-  // ── Data ────────────────────────────────────────────────────────────────
-
   Future<void> _refreshList() async {
     setState(() => _currentPage = 1);
     await context
         .read<QuestionnaireProvider>()
         .loadQuestionnaires(dusun: _filterDusun);
   }
-
-  // ── Filtering & paging ───────────────────────────────────────────────────
 
   List<Questionnaire> _filteredList(List<Questionnaire> all) {
     var list = all;
@@ -88,8 +83,6 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
     }
   }
 
-  // ── Build ────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -127,7 +120,6 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
 
                 final totalPages = _totalPages(filtered.length);
 
-                // Clamp page if data shrank (e.g. after delete)
                 if (_currentPage > totalPages) {
                   WidgetsBinding.instance.addPostFrameCallback(
                         (_) => setState(() => _currentPage = totalPages),
@@ -136,27 +128,29 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
 
                 final pageItems = _currentPageItems(filtered);
                 final startItem = (_currentPage - 1) * _pageSize + 1;
-                final endItem = (startItem + pageItems.length - 1)
-                    .clamp(0, filtered.length);
+                final endItem =
+                (startItem + pageItems.length - 1).clamp(0, filtered.length);
 
                 return Column(
                   children: [
-                    // ── Card list ───────────────────────────────────────────
+                    // ── Card list ─────────────────────────────────────────
                     Expanded(
                       child: RefreshIndicator(
                         onRefresh: _refreshList,
                         color: AppTheme.primaryBlue,
                         child: ListView.builder(
                           controller: _scrollCtrl,
-                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                          // Tambah padding bawah agar card terakhir
+                          // tidak tertutup apapun
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
                           itemCount: pageItems.length,
                           itemBuilder: (_, i) => _buildCard(pageItems[i]),
                         ),
                       ),
                     ),
 
-                    // ── Pagination bar ──────────────────────────────────────
-                    _buildPaginationBar(
+                    // ── Pagination bar + FAB ──────────────────────────────
+                    _buildBottomBar(
                       currentPage: _currentPage,
                       totalPages: totalPages,
                       totalItems: filtered.length,
@@ -170,28 +164,13 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
           ),
         ],
       ),
-      floatingActionButton: PermissionGuard(
-        feature: AppFeatures.questionnaireCreate,
-        child: FloatingActionButton.extended(
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const KuesionerFormScreen()),
-          ).then((_) => _refreshList()),
-          backgroundColor: AppTheme.primaryBlue,
-          foregroundColor: Colors.white,
-          icon: const Icon(Icons.add),
-          label: const Text(
-            'Tambah Pendataan',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-        ),
-      ),
+      // FAB dihapus dari sini — dipindah ke dalam _buildBottomBar
     );
   }
 
-  // ── Pagination bar ───────────────────────────────────────────────────────
+  // ── Bottom bar: pagination + FAB bulat di pojok kanan ─────────────────────
 
-  Widget _buildPaginationBar({
+  Widget _buildBottomBar({
     required int currentPage,
     required int totalPages,
     required int totalItems,
@@ -199,7 +178,12 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
     required int endItem,
   }) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+      padding: EdgeInsets.only(
+        left: 12,
+        right: 12,
+        top: 10,
+        bottom: MediaQuery.of(context).padding.bottom + 10,
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(top: BorderSide(color: Colors.grey[200]!, width: 1)),
@@ -211,64 +195,94 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
           ),
         ],
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // ── Info ──────────────────────────────────────────────────────────
-          Text(
-            'Menampilkan $startItem–$endItem dari $totalItems kuesioner'
-                '  |  Halaman $currentPage / $totalPages',
-            style: TextStyle(fontSize: 11, color: Colors.grey[500]),
-            textAlign: TextAlign.center,
+          // ── Pagination (kiri) ────────────────────────────────────────────
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Info teks
+                Text(
+                  '$startItem–$endItem dari $totalItems  |  Hal $currentPage/$totalPages',
+                  style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                ),
+                const SizedBox(height: 6),
+                // Tombol navigasi
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _navBtn(
+                      icon: Icons.first_page,
+                      onTap: currentPage > 1
+                          ? () => _goToPage(1, totalPages)
+                          : null,
+                    ),
+                    _navBtn(
+                      icon: Icons.chevron_left,
+                      onTap: currentPage > 1
+                          ? () => _goToPage(currentPage - 1, totalPages)
+                          : null,
+                    ),
+                    const SizedBox(width: 2),
+                    ..._pageChips(currentPage, totalPages),
+                    const SizedBox(width: 2),
+                    _navBtn(
+                      icon: Icons.chevron_right,
+                      onTap: currentPage < totalPages
+                          ? () => _goToPage(currentPage + 1, totalPages)
+                          : null,
+                    ),
+                    _navBtn(
+                      icon: Icons.last_page,
+                      onTap: currentPage < totalPages
+                          ? () => _goToPage(totalPages, totalPages)
+                          : null,
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 6),
 
-          // ── Controls ──────────────────────────────────────────────────────
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // First
-              _navBtn(
-                icon: Icons.first_page,
-                onTap: currentPage > 1 ? () => _goToPage(1, totalPages) : null,
+          const SizedBox(width: 12),
+
+          // ── FAB bulat (kanan) ────────────────────────────────────────────
+          PermissionGuard(
+            feature: AppFeatures.questionnaireCreate,
+            child: GestureDetector(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const KuesionerFormScreen()),
+              ).then((_) => _refreshList()),
+              child: Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryBlue,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.primaryBlue.withOpacity(0.35),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: const Icon(Icons.add, color: Colors.white, size: 28),
               ),
-              // Prev
-              _navBtn(
-                icon: Icons.chevron_left,
-                onTap: currentPage > 1
-                    ? () => _goToPage(currentPage - 1, totalPages)
-                    : null,
-              ),
-
-              const SizedBox(width: 4),
-
-              // Page number chips
-              ..._pageChips(currentPage, totalPages),
-
-              const SizedBox(width: 4),
-
-              // Next
-              _navBtn(
-                icon: Icons.chevron_right,
-                onTap: currentPage < totalPages
-                    ? () => _goToPage(currentPage + 1, totalPages)
-                    : null,
-              ),
-              // Last
-              _navBtn(
-                icon: Icons.last_page,
-                onTap: currentPage < totalPages
-                    ? () => _goToPage(totalPages, totalPages)
-                    : null,
-              ),
-            ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  /// Render up to 5 page-number chips centred around [current].
+  // ── Page chips ─────────────────────────────────────────────────────────────
+
   List<Widget> _pageChips(int current, int total) {
     int start = (current - 2).clamp(1, total);
     int end = (start + 4).clamp(1, total);
@@ -276,7 +290,6 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
 
     final chips = <Widget>[];
 
-    // Leading ellipsis
     if (start > 1) {
       chips.add(_pageNumBtn(1, current, total));
       if (start > 2) chips.add(_ellipsis());
@@ -286,7 +299,6 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
       chips.add(_pageNumBtn(p, current, total));
     }
 
-    // Trailing ellipsis
     if (end < total) {
       if (end < total - 1) chips.add(_ellipsis());
       chips.add(_pageNumBtn(total, current, total));
@@ -297,8 +309,7 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
 
   Widget _ellipsis() => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 2),
-    child:
-    Text('…', style: TextStyle(color: Colors.grey[400], fontSize: 13)),
+    child: Text('…', style: TextStyle(color: Colors.grey[400], fontSize: 13)),
   );
 
   Widget _pageNumBtn(int page, int current, int totalPages) {
@@ -308,8 +319,8 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         margin: const EdgeInsets.symmetric(horizontal: 2),
-        width: 32,
-        height: 32,
+        width: 30,
+        height: 30,
         decoration: BoxDecoration(
           color: active ? AppTheme.primaryBlue : Colors.transparent,
           border: Border.all(
@@ -321,7 +332,7 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
           child: Text(
             '$page',
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 11,
               fontWeight: active ? FontWeight.bold : FontWeight.normal,
               color: active ? Colors.white : AppTheme.textPrimary,
             ),
@@ -336,8 +347,8 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 32,
-        height: 32,
+        width: 30,
+        height: 30,
         margin: const EdgeInsets.symmetric(horizontal: 2),
         decoration: BoxDecoration(
           border: Border.all(
@@ -346,14 +357,14 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
         ),
         child: Icon(
           icon,
-          size: 18,
+          size: 16,
           color: enabled ? AppTheme.textPrimary : Colors.grey[350],
         ),
       ),
     );
   }
 
-  // ── Search bar ──────────────────────────────────────────────────────────
+  // ── Search bar ─────────────────────────────────────────────────────────────
 
   Widget _buildSearchBar() {
     return Container(
@@ -363,8 +374,7 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
         controller: _searchCtrl,
         decoration: InputDecoration(
           hintText: 'Cari No. KK atau Nama Kepala Keluarga...',
-          prefixIcon:
-          const Icon(Icons.search, color: AppTheme.primaryBlue),
+          prefixIcon: const Icon(Icons.search, color: AppTheme.primaryBlue),
           suffixIcon: _search.isNotEmpty
               ? IconButton(
             icon: const Icon(Icons.clear),
@@ -389,7 +399,7 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
     );
   }
 
-  // ── Filter chip ─────────────────────────────────────────────────────────
+  // ── Filter chip ────────────────────────────────────────────────────────────
 
   Widget _buildFilterChip() {
     return Container(
@@ -409,15 +419,15 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
               _refreshList();
             },
             backgroundColor: AppTheme.primaryBlue.withOpacity(0.1),
-            labelStyle: const TextStyle(
-                color: AppTheme.primaryBlue, fontSize: 12),
+            labelStyle:
+            const TextStyle(color: AppTheme.primaryBlue, fontSize: 12),
           ),
         ],
       ),
     );
   }
 
-  // ── Card ─────────────────────────────────────────────────────────────────
+  // ── Card ───────────────────────────────────────────────────────────────────
 
   Widget _buildCard(Questionnaire q) {
     final kk = q.kepalaKeluarga;
@@ -428,8 +438,7 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      shape:
-      RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       elevation: 2,
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
@@ -439,7 +448,7 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Header ─────────────────────────────────────────────────
+              // ── Header ──────────────────────────────────────────────────
               Row(
                 children: [
                   Container(
@@ -480,7 +489,7 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
 
               const Divider(height: 16),
 
-              // ── Stats ───────────────────────────────────────────────────
+              // ── Stats ────────────────────────────────────────────────────
               Row(
                 children: [
                   _infoChip(
@@ -504,10 +513,9 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
 
               const SizedBox(height: 10),
 
-              // ── Action buttons ──────────────────────────────────────────
+              // ── Action buttons ───────────────────────────────────────────
               Row(
                 children: [
-                  // Detail — always visible
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: () => _openDetail(q),
@@ -523,8 +531,6 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
                       ),
                     ),
                   ),
-
-                  // Edit
                   if (ps.can(AppFeatures.questionnaireEdit)) ...[
                     const SizedBox(width: 8),
                     Expanded(
@@ -544,8 +550,6 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
                       ),
                     ),
                   ],
-
-                  // Hapus — shown when user has delete OR edit permission
                   if (ps.can(AppFeatures.questionnaireDelete) ||
                       ps.can(AppFeatures.questionnaireEdit)) ...[
                     const SizedBox(width: 8),
@@ -574,7 +578,7 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
     );
   }
 
-  // ── Navigation helpers ───────────────────────────────────────────────────
+  // ── Navigation helpers ─────────────────────────────────────────────────────
 
   void _openDetail(Questionnaire q) {
     Navigator.push(
@@ -587,13 +591,12 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
   Future<void> _openEdit(Questionnaire q) async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(
-          builder: (_) => KuesionerFormScreen(existingData: q)),
+      MaterialPageRoute(builder: (_) => KuesionerFormScreen(existingData: q)),
     );
     if (result == true) _refreshList();
   }
 
-  // ── Delete dialog ────────────────────────────────────────────────────────
+  // ── Delete dialog ──────────────────────────────────────────────────────────
 
   void _confirmDelete(Questionnaire q) {
     final namaKk = q.kepalaKeluarga?.r201 ?? 'responden ini';
@@ -604,8 +607,8 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16)),
+        shape:
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(children: [
           Icon(Icons.warning_amber_rounded,
               color: AppTheme.accentRed, size: 22),
@@ -617,8 +620,7 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Anda akan menghapus data keluarga:',
-                style:
-                TextStyle(color: Colors.grey[600], fontSize: 13)),
+                style: TextStyle(color: Colors.grey[600], fontSize: 13)),
             const SizedBox(height: 8),
             Container(
               width: double.infinity,
@@ -626,8 +628,8 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
               decoration: BoxDecoration(
                 color: AppTheme.accentRed.withOpacity(0.07),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                    color: AppTheme.accentRed.withOpacity(0.25)),
+                border:
+                Border.all(color: AppTheme.accentRed.withOpacity(0.25)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -682,7 +684,7 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
     );
   }
 
-  // ── Filter bottom sheet ──────────────────────────────────────────────────
+  // ── Filter bottom sheet ────────────────────────────────────────────────────
 
   void _showFilter() {
     final dusunList = context
@@ -698,8 +700,7 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
-          borderRadius:
-          BorderRadius.vertical(top: Radius.circular(20))),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -707,8 +708,8 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text('Filter Dusun',
-                style: TextStyle(
-                    fontSize: 18, fontWeight: FontWeight.bold)),
+                style:
+                TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
             ListTile(
               title: const Text('Semua Dusun'),
@@ -757,7 +758,7 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
     );
   }
 
-  // ── Empty state ──────────────────────────────────────────────────────────
+  // ── Empty state ────────────────────────────────────────────────────────────
 
   Widget _buildEmpty() => Center(
     child: Column(
@@ -781,7 +782,7 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
     ),
   );
 
-  // ── Small helpers ────────────────────────────────────────────────────────
+  // ── Small helpers ──────────────────────────────────────────────────────────
 
   Widget _buildDusunBadge(String label) {
     if (label == '-' || label.isEmpty) return const SizedBox.shrink();

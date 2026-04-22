@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../utils/app_theme.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// FormInput  (unchanged)
+// FormInput
 // ─────────────────────────────────────────────────────────────────────────────
 
 class FormInput extends StatelessWidget {
@@ -74,13 +74,10 @@ class FormInput extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CustomSelectField  — estetik bottom-sheet picker dengan search
+// CustomSelectField  — StatefulWidget agar FormField selalu sync dengan value
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Drop-in replacement for [FormDropdown].
-/// Shows a styled trigger field; on tap opens a modal bottom sheet
-/// with a search bar and a scrollable list of options.
-class CustomSelectField extends StatelessWidget {
+class CustomSelectField extends StatefulWidget {
   final String label;
   final String? value;
   final List<Map<String, String>> options;
@@ -98,11 +95,35 @@ class CustomSelectField extends StatelessWidget {
     this.isRequired = false,
   });
 
+  @override
+  State<CustomSelectField> createState() => _CustomSelectFieldState();
+}
+
+class _CustomSelectFieldState extends State<CustomSelectField> {
+  final _fieldKey = GlobalKey<FormFieldState<String>>();
+
+  @override
+  void didUpdateWidget(CustomSelectField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Saat value berubah dari luar (mis. cascade WilayahPicker reset),
+    // sync ke FormField internal agar validator selalu pakai nilai terkini.
+    if (oldWidget.value != widget.value) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_fieldKey.currentState != null) {
+          _fieldKey.currentState!.didChange(widget.value);
+        }
+      });
+    }
+  }
+
   String? get _selectedLabel {
-    if (value == null) return null;
-    return options
+    if (widget.value == null) return null;
+    return widget.options
         .cast<Map<String, String>?>()
-        .firstWhere((o) => o?['value'] == value, orElse: () => null)?['label'];
+        .firstWhere(
+          (o) => o?['value'] == widget.value,
+      orElse: () => null,
+    )?['label'];
   }
 
   void _open(BuildContext context) {
@@ -111,12 +132,14 @@ class CustomSelectField extends StatelessWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _SelectSheet(
-        title: label.replaceAll(' *', ''),
-        options: options,
-        selectedValue: value,
+        title: widget.label.replaceAll(' *', ''),
+        options: widget.options,
+        selectedValue: widget.value,
         onSelected: (val) {
           Navigator.pop(context);
-          onChanged(val);
+          // Sync FormField dulu, lalu notify parent
+          _fieldKey.currentState?.didChange(val);
+          widget.onChanged(val);
         },
       ),
     );
@@ -125,11 +148,11 @@ class CustomSelectField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selected = _selectedLabel;
-    final hasError = false; // validated externally via FormField below
 
     return FormField<String>(
-      initialValue: value,
-      validator: validator,
+      key: _fieldKey,
+      initialValue: widget.value,
+      validator: widget.validator,
       builder: (state) {
         final showError = state.errorText != null;
         return Column(
@@ -138,14 +161,14 @@ class CustomSelectField extends StatelessWidget {
             // ── Label ─────────────────────────────────────────────────────
             RichText(
               text: TextSpan(
-                text: label.replaceAll(' *', ''),
+                text: widget.label.replaceAll(' *', ''),
                 style: const TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 13,
                   color: AppTheme.textPrimary,
                 ),
                 children: [
-                  if (isRequired)
+                  if (widget.isRequired)
                     const TextSpan(
                       text: ' *',
                       style: TextStyle(color: AppTheme.accentRed),
@@ -157,10 +180,7 @@ class CustomSelectField extends StatelessWidget {
 
             // ── Trigger field ──────────────────────────────────────────────
             GestureDetector(
-              onTap: () {
-                _open(context);
-                state.didChange(value);
-              },
+              onTap: () => _open(context),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
                 height: 48,
@@ -181,7 +201,8 @@ class CustomSelectField extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        selected ?? 'Pilih ${label.replaceAll(' *', '')}',
+                        selected ??
+                            'Pilih ${widget.label.replaceAll(' *', '')}',
                         style: TextStyle(
                           fontSize: 13,
                           color: selected != null
@@ -228,7 +249,7 @@ class CustomSelectField extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _SelectSheet  — the bottom sheet content
+// _SelectSheet  — bottom sheet content
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _SelectSheet extends StatefulWidget {
@@ -262,7 +283,8 @@ class _SelectSheetState extends State<_SelectSheet>
       vsync: this,
       duration: const Duration(milliseconds: 280),
     );
-    _scaleAnim = CurvedAnimation(parent: _animCtrl, curve: Curves.easeOutCubic);
+    _scaleAnim =
+        CurvedAnimation(parent: _animCtrl, curve: Curves.easeOutCubic);
     _animCtrl.forward();
   }
 
@@ -352,9 +374,10 @@ class _SelectSheetState extends State<_SelectSheet>
                 onChanged: (v) => setState(() => _query = v),
                 style: const TextStyle(fontSize: 13),
                 decoration: InputDecoration(
-                  hintText: 'Cari ${widget.title.toLowerCase()}...',
-                  hintStyle:
-                  TextStyle(fontSize: 13, color: Colors.grey[400]),
+                  hintText:
+                  'Cari ${widget.title.toLowerCase()}...',
+                  hintStyle: TextStyle(
+                      fontSize: 13, color: Colors.grey[400]),
                   prefixIcon: const Icon(Icons.search,
                       size: 18, color: AppTheme.primaryBlue),
                   suffixIcon: _query.isNotEmpty
@@ -364,7 +387,8 @@ class _SelectSheetState extends State<_SelectSheet>
                       setState(() => _query = '');
                     },
                     child: const Icon(Icons.clear,
-                        size: 16, color: AppTheme.textSecondary),
+                        size: 16,
+                        color: AppTheme.textSecondary),
                   )
                       : null,
                   filled: true,
@@ -373,11 +397,13 @@ class _SelectSheetState extends State<_SelectSheet>
                       horizontal: 14, vertical: 10),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey[200]!),
+                    borderSide:
+                    BorderSide(color: Colors.grey[200]!),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey[200]!),
+                    borderSide:
+                    BorderSide(color: Colors.grey[200]!),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -405,7 +431,8 @@ class _SelectSheetState extends State<_SelectSheet>
                     Text(
                       'Tidak ada hasil untuk "$_query"',
                       style: TextStyle(
-                          fontSize: 13, color: Colors.grey[400]),
+                          fontSize: 13,
+                          color: Colors.grey[400]),
                     ),
                   ],
                 ),
@@ -425,7 +452,8 @@ class _SelectSheetState extends State<_SelectSheet>
                   return _OptionTile(
                     label: opt['label'] ?? '',
                     isSelected: isSelected,
-                    onTap: () => widget.onSelected(opt['value']),
+                    onTap: () =>
+                        widget.onSelected(opt['value']),
                   );
                 },
               ),
@@ -458,13 +486,13 @@ class _OptionTile extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        padding:
+        const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         color: isSelected
             ? AppTheme.primaryBlue.withOpacity(0.06)
             : Colors.transparent,
         child: Row(
           children: [
-            // Leading dot indicator
             AnimatedContainer(
               duration: const Duration(milliseconds: 150),
               width: 8,
@@ -477,23 +505,20 @@ class _OptionTile extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 14),
-
-            // Label
             Expanded(
               child: Text(
                 label,
                 style: TextStyle(
                   fontSize: 13,
-                  fontWeight:
-                  isSelected ? FontWeight.w600 : FontWeight.normal,
+                  fontWeight: isSelected
+                      ? FontWeight.w600
+                      : FontWeight.normal,
                   color: isSelected
                       ? AppTheme.primaryBlue
                       : AppTheme.textPrimary,
                 ),
               ),
             ),
-
-            // Check icon
             if (isSelected)
               Container(
                 width: 22,
@@ -513,7 +538,7 @@ class _OptionTile extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// FormDropdown  — kept for backward compat, internally uses CustomSelectField
+// FormDropdown  — backward compat, delegates ke CustomSelectField
 // ─────────────────────────────────────────────────────────────────────────────
 
 class FormDropdown extends StatelessWidget {
@@ -548,7 +573,7 @@ class FormDropdown extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// FormRadioGroup  (unchanged)
+// FormRadioGroup
 // ─────────────────────────────────────────────────────────────────────────────
 
 class FormRadioGroup extends StatelessWidget {
@@ -604,8 +629,8 @@ class FormRadioGroup extends StatelessWidget {
               ),
               if (state.errorText != null)
                 Text(state.errorText!,
-                    style:
-                    const TextStyle(color: Colors.red, fontSize: 11)),
+                    style: const TextStyle(
+                        color: Colors.red, fontSize: 11)),
             ],
           ),
         ),
@@ -615,7 +640,7 @@ class FormRadioGroup extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// InfoTile  (unchanged)
+// InfoTile
 // ─────────────────────────────────────────────────────────────────────────────
 
 class InfoTile extends StatelessWidget {
@@ -643,11 +668,13 @@ class InfoTile extends StatelessWidget {
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: (iconColor ?? AppTheme.primaryBlue).withOpacity(0.1),
+              color:
+              (iconColor ?? AppTheme.primaryBlue).withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(icon,
-                size: 16, color: iconColor ?? AppTheme.primaryBlue),
+                size: 16,
+                color: iconColor ?? AppTheme.primaryBlue),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -656,7 +683,8 @@ class InfoTile extends StatelessWidget {
               children: [
                 Text(label,
                     style: const TextStyle(
-                        fontSize: 11, color: AppTheme.textSecondary)),
+                        fontSize: 11,
+                        color: AppTheme.textSecondary)),
                 const SizedBox(height: 2),
                 Text(value,
                     style: const TextStyle(
