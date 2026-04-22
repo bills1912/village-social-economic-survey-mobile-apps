@@ -1,11 +1,4 @@
 // lib/screens/kuesioner/kuesioner_form_screen.dart
-//
-// Perubahan utama vs versi sebelumnya:
-//  - Step 1: dusun → teks bebas (opsional), desa dipilih via WilayahPicker
-//  - Status KK label menyesuaikan nama desa yang dipilih
-//  - _buildQ menyertakan WilayahSnapshot
-//  - Step 2 & 3 tidak berubah (dipertahankan lengkap di bawah)
-//
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
@@ -32,7 +25,7 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
 
   // ── Step 1 ──────────────────────────────────────────────────────────────────
   final _nomorKkCtrl = TextEditingController();
-  final _dusunCtrl   = TextEditingController(); // teks bebas
+  final _dusunCtrl   = TextEditingController();
   WilayahSnapshot _wilayah = WilayahSnapshot.empty;
   String? _statusKk;
   String? _sudahUrusKk;
@@ -50,11 +43,8 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
   double? _mapLng;
 
   bool get _isEditing => widget.existingData != null;
-
-  // Nama desa yang sedang dipilih (untuk label status KK)
   String get _namaDesa => _wilayah.namaDesa ?? 'Desa';
 
-  // Label opsi status KK disesuaikan nama desa
   List<Map<String, String>> get _statusKkOptions => [
     {'value': '1', 'label': 'KK $_namaDesa'},
     {'value': '2', 'label': 'Bukan KK $_namaDesa'},
@@ -341,13 +331,13 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
     );
   }
 
-  // ─── STEP 1: Wilayah + Nomor KK + Waktu + Lokasi ────────────────────────────
+  // ─── STEP 1 ───────────────────────────────────────────────────────────────
 
   Widget _step1() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(children: [
-        // ── Waktu Wawancara ─────────────────────────────────────────────────────
+        // ── Waktu ──────────────────────────────────────────────────────────
         _section('Waktu Wawancara', Icons.schedule_outlined, [
           _waktuButton(
             label: 'Catat Waktu Mulai', icon: Icons.play_circle_outline,
@@ -361,18 +351,16 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
         ]),
         const SizedBox(height: 16),
 
-        // ── Wilayah ────────────────────────────────────────────────────────────
+        // ── Wilayah ────────────────────────────────────────────────────────
         _section('Wilayah Administratif', Icons.map_outlined, [
           WilayahPicker(
             initialSnapshot: _wilayah,
             onChanged: (snap) => setState(() {
               _wilayah = snap;
-              // Reset status KK supaya label ikut refresh
               _statusKk = null;
             }),
           ),
           const SizedBox(height: 12),
-          // Dusun — teks bebas, opsional
           Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             const Text('Dusun / Lingkungan',
                 style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppTheme.textPrimary)),
@@ -397,7 +385,7 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
         ]),
         const SizedBox(height: 16),
 
-        // ── Identitas KK ────────────────────────────────────────────────────────
+        // ── Identitas KK ───────────────────────────────────────────────────
         _section('Identitas Kepala Keluarga', Icons.home_outlined, [
           FormInput(
             label: 'Nomor KK *',
@@ -410,42 +398,30 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
           ),
           const SizedBox(height: 12),
 
-          // Status KK — label mengikuti nama desa
-          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            RichText(text: const TextSpan(
-              text: 'Status KK',
-              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppTheme.textPrimary),
-            )),
-            const SizedBox(height: 6),
-            DropdownButtonFormField<String>(
-              value: _statusKk,
-              isExpanded: true,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                filled: true, fillColor: Colors.white,
-              ),
-              hint: Text('Pilih status KK', style: TextStyle(fontSize: 13, color: Colors.grey[400])),
-              items: _statusKkOptions.map((o) => DropdownMenuItem(
-                value: o['value'],
-                child: Text(o['label']!, style: const TextStyle(fontSize: 13)),
-              )).toList(),
-              onChanged: (v) => setState(() => _statusKk = v),
-            ),
-          ]),
+          // ── Status KK — CustomSelectField ──────────────────────────────
+          CustomSelectField(
+            label: 'Status KK',
+            value: _statusKk,
+            options: _statusKkOptions,
+            onChanged: (v) => setState(() => _statusKk = v),
+          ),
+
           if (_statusKk == '2' || _statusKk == '3') ...[
             const SizedBox(height: 12),
-            FormDropdown(
+            CustomSelectField(
               label: 'Sudah Urus KK?',
               value: _sudahUrusKk,
-              options: const [{'value': '1', 'label': 'Sudah'}, {'value': '2', 'label': 'Belum'}],
+              options: const [
+                {'value': '1', 'label': 'Sudah'},
+                {'value': '2', 'label': 'Belum'},
+              ],
               onChanged: (v) => setState(() => _sudahUrusKk = v),
             ),
           ],
         ]),
         const SizedBox(height: 16),
 
-        // ── Lokasi ──────────────────────────────────────────────────────────────
+        // ── Lokasi ─────────────────────────────────────────────────────────
         _section('Lokasi Rumah', Icons.location_on_outlined, [
           SizedBox(
             width: double.infinity,
@@ -521,8 +497,7 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
     ]);
   }
 
-  // ─── STEP 2: Anggota Keluarga ─────────────────────────────────────────────
-  // (Tidak berubah — sama seperti versi sebelumnya)
+  // ─── STEP 2 ───────────────────────────────────────────────────────────────
 
   Widget _step2() {
     return Column(children: [
@@ -603,6 +578,7 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
       const SizedBox(height: 10),
       FormInput(label: 'NIK', hint: '16 digit', initialValue: data['r_202'], keyboardType: TextInputType.number, maxLength: 16, onChanged: (v) => data['r_202'] = v),
       const SizedBox(height: 10),
+      // ── All dropdowns now use CustomSelectField via FormDropdown alias ──
       FormDropdown(label: 'Status dalam Keluarga', value: data['r_203'], options: AppConstants.statusKeluargaOptions, onChanged: (v) => setState(() => data['r_203'] = v)),
       const SizedBox(height: 10),
       Row(children: [
@@ -650,9 +626,7 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
     ]);
   }
 
-  // ── Pekerjaan fields (sama seperti sebelumnya, ringkas di sini) ──────────
   Widget _pekerjaanFields(Map<String, dynamic> data) {
-    // [Konten sama persis dengan versi sebelumnya — tidak ada perubahan]
     return FormDropdown(
       label: 'Bekerja Sebagai *',
       value: data['r_301_usaha_buruh_pekerjaBebas'],
@@ -667,8 +641,6 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
       }),
       validator: (v) => (data['r_300_pekerjaan'] == '2' && v == null) ? 'Pilih tipe pekerjaan' : null,
     );
-    // NOTE: Untuk pekerjaan detail lengkap (usaha/buruh/bebas), gunakan kode dari
-    // versi sebelumnya — tidak ada perubahan sama sekali pada bagian itu.
   }
 
   Widget _sectionHeader(String title, IconData icon) => Padding(
@@ -742,7 +714,7 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
     ),
   );
 
-  // ─── STEP 3: Konfirmasi ───────────────────────────────────────────────────
+  // ─── STEP 3 ───────────────────────────────────────────────────────────────
 
   Widget _step3(dynamic user) {
     final isi = _anggotaList.where((a) => (a['r_201']??'').toString().isNotEmpty).length;
@@ -884,7 +856,7 @@ class _KuesionerFormScreenState extends State<KuesionerFormScreen> {
   }
 }
 
-// ─── Map Widget (sama persis, tidak berubah) ──────────────────────────────────
+// ─── Map Widget ───────────────────────────────────────────────────────────────
 
 class _MapWidget extends StatefulWidget {
   final double lat; final double lng;

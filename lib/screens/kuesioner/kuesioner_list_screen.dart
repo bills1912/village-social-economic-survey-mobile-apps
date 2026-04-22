@@ -18,27 +18,80 @@ class KuesionerListScreen extends StatefulWidget {
 
 class _KuesionerListScreenState extends State<KuesionerListScreen> {
   final _searchCtrl = TextEditingController();
+  final _scrollCtrl = ScrollController();
+
   String _search = '';
   String? _filterDusun;
+
+  // ── Pagination ──────────────────────────────────────────────────────────
+  static const int _pageSize = 10;
+  int _currentPage = 1;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<QuestionnaireProvider>().loadQuestionnaires();
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _refreshList());
   }
 
   @override
   void dispose() {
     _searchCtrl.dispose();
+    _scrollCtrl.dispose();
     super.dispose();
   }
 
+  // ── Data ────────────────────────────────────────────────────────────────
+
+  Future<void> _refreshList() async {
+    setState(() => _currentPage = 1);
+    await context
+        .read<QuestionnaireProvider>()
+        .loadQuestionnaires(dusun: _filterDusun);
+  }
+
+  // ── Filtering & paging ───────────────────────────────────────────────────
+
+  List<Questionnaire> _filteredList(List<Questionnaire> all) {
+    var list = all;
+    if (_filterDusun != null) {
+      list = list.where((q) => q.dusun == _filterDusun).toList();
+    }
+    if (_search.isNotEmpty) {
+      list = list.where((q) {
+        final kk = q.kepalaKeluarga?.r201?.toLowerCase() ?? '';
+        return q.r102.contains(_search) ||
+            kk.contains(_search) ||
+            q.namaPetugas.toLowerCase().contains(_search);
+      }).toList();
+    }
+    return list;
+  }
+
+  int _totalPages(int total) => (total / _pageSize).ceil().clamp(1, 9999);
+
+  List<Questionnaire> _currentPageItems(List<Questionnaire> filtered) {
+    final start = (_currentPage - 1) * _pageSize;
+    final end = (start + _pageSize).clamp(0, filtered.length);
+    if (start >= filtered.length) return [];
+    return filtered.sublist(start, end);
+  }
+
+  void _goToPage(int page, int totalPages) {
+    if (page < 1 || page > totalPages) return;
+    setState(() => _currentPage = page);
+    if (_scrollCtrl.hasClients) {
+      _scrollCtrl.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  // ── Build ────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
-    final ps = PermissionsService.instance;
-
     return Scaffold(
       backgroundColor: AppTheme.bgLight,
       appBar: AppBar(
@@ -48,68 +101,19 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
           IconButton(
             icon: const Icon(Icons.filter_list, color: Colors.white),
             onPressed: _showFilter,
+            tooltip: 'Filter Dusun',
           ),
           IconButton(
             icon: const Icon(Icons.refresh, color: Colors.white),
-            onPressed: () => context
-                .read<QuestionnaireProvider>()
-                .loadQuestionnaires(dusun: _filterDusun),
+            onPressed: _refreshList,
+            tooltip: 'Refresh',
           ),
         ],
       ),
       body: Column(
         children: [
-          // Search bar
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.all(16),
-            child: TextField(
-              controller: _searchCtrl,
-              decoration: InputDecoration(
-                hintText: 'Cari No. KK atau Nama Kepala Keluarga...',
-                prefixIcon: const Icon(Icons.search, color: AppTheme.primaryBlue),
-                suffixIcon: _search.isNotEmpty
-                    ? IconButton(
-                  icon: const Icon(Icons.clear),
-                  onPressed: () {
-                    _searchCtrl.clear();
-                    setState(() => _search = '');
-                  },
-                )
-                    : null,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              onChanged: (v) => setState(() => _search = v.toLowerCase()),
-            ),
-          ),
-
-          // Filter chip
-          if (_filterDusun != null)
-            Container(
-              width: double.infinity,
-              color: Colors.white,
-              padding: const EdgeInsets.only(left: 16, bottom: 8),
-              child: Wrap(
-                children: [
-                  Chip(
-                    // dusun sekarang teks bebas, langsung tampilkan
-                    label: Text(_filterDusun!),
-                    deleteIcon: const Icon(Icons.close, size: 14),
-                    onDeleted: () {
-                      setState(() => _filterDusun = null);
-                      context.read<QuestionnaireProvider>().loadQuestionnaires();
-                    },
-                    backgroundColor: AppTheme.primaryBlue.withOpacity(0.1),
-                    labelStyle: const TextStyle(
-                        color: AppTheme.primaryBlue, fontSize: 12),
-                  ),
-                ],
-              ),
-            ),
-
-          // List
+          _buildSearchBar(),
+          if (_filterDusun != null) _buildFilterChip(),
           Expanded(
             child: Consumer<QuestionnaireProvider>(
               builder: (_, prov, __) {
@@ -117,49 +121,62 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                var list = prov.questionnaires;
-                if (_filterDusun != null) {
-                  list = list
-                      .where((q) => q.dusun == _filterDusun)
-                      .toList();
-                }
-                if (_search.isNotEmpty) {
-                  list = list.where((q) {
-                    final kk =
-                        q.kepalaKeluarga?.r201?.toLowerCase() ?? '';
-                    return q.r102.contains(_search) ||
-                        kk.contains(_search) ||
-                        q.namaPetugas.toLowerCase().contains(_search);
-                  }).toList();
+                final filtered = _filteredList(prov.questionnaires);
+
+                if (filtered.isEmpty) return _buildEmpty();
+
+                final totalPages = _totalPages(filtered.length);
+
+                // Clamp page if data shrank (e.g. after delete)
+                if (_currentPage > totalPages) {
+                  WidgetsBinding.instance.addPostFrameCallback(
+                        (_) => setState(() => _currentPage = totalPages),
+                  );
                 }
 
-                if (list.isEmpty) return _buildEmpty();
+                final pageItems = _currentPageItems(filtered);
+                final startItem = (_currentPage - 1) * _pageSize + 1;
+                final endItem = (startItem + pageItems.length - 1)
+                    .clamp(0, filtered.length);
 
-                return RefreshIndicator(
-                  onRefresh: () =>
-                      prov.loadQuestionnaires(dusun: _filterDusun),
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: list.length,
-                    itemBuilder: (_, i) => _buildCard(list[i]),
-                  ),
+                return Column(
+                  children: [
+                    // ── Card list ───────────────────────────────────────────
+                    Expanded(
+                      child: RefreshIndicator(
+                        onRefresh: _refreshList,
+                        color: AppTheme.primaryBlue,
+                        child: ListView.builder(
+                          controller: _scrollCtrl,
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                          itemCount: pageItems.length,
+                          itemBuilder: (_, i) => _buildCard(pageItems[i]),
+                        ),
+                      ),
+                    ),
+
+                    // ── Pagination bar ──────────────────────────────────────
+                    _buildPaginationBar(
+                      currentPage: _currentPage,
+                      totalPages: totalPages,
+                      totalItems: filtered.length,
+                      startItem: startItem,
+                      endItem: endItem,
+                    ),
+                  ],
                 );
               },
             ),
           ),
         ],
       ),
-      // FAB hanya tampil jika punya izin create
       floatingActionButton: PermissionGuard(
         feature: AppFeatures.questionnaireCreate,
         child: FloatingActionButton.extended(
           onPressed: () => Navigator.push(
             context,
-            MaterialPageRoute(
-                builder: (_) => const KuesionerFormScreen()),
-          ).then((_) => context
-              .read<QuestionnaireProvider>()
-              .loadQuestionnaires()),
+            MaterialPageRoute(builder: (_) => const KuesionerFormScreen()),
+          ).then((_) => _refreshList()),
           backgroundColor: AppTheme.primaryBlue,
           foregroundColor: Colors.white,
           icon: const Icon(Icons.add),
@@ -172,11 +189,239 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
     );
   }
 
+  // ── Pagination bar ───────────────────────────────────────────────────────
+
+  Widget _buildPaginationBar({
+    required int currentPage,
+    required int totalPages,
+    required int totalItems,
+    required int startItem,
+    required int endItem,
+  }) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Colors.grey[200]!, width: 1)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 6,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // ── Info ──────────────────────────────────────────────────────────
+          Text(
+            'Menampilkan $startItem–$endItem dari $totalItems kuesioner'
+                '  |  Halaman $currentPage / $totalPages',
+            style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 6),
+
+          // ── Controls ──────────────────────────────────────────────────────
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // First
+              _navBtn(
+                icon: Icons.first_page,
+                onTap: currentPage > 1 ? () => _goToPage(1, totalPages) : null,
+              ),
+              // Prev
+              _navBtn(
+                icon: Icons.chevron_left,
+                onTap: currentPage > 1
+                    ? () => _goToPage(currentPage - 1, totalPages)
+                    : null,
+              ),
+
+              const SizedBox(width: 4),
+
+              // Page number chips
+              ..._pageChips(currentPage, totalPages),
+
+              const SizedBox(width: 4),
+
+              // Next
+              _navBtn(
+                icon: Icons.chevron_right,
+                onTap: currentPage < totalPages
+                    ? () => _goToPage(currentPage + 1, totalPages)
+                    : null,
+              ),
+              // Last
+              _navBtn(
+                icon: Icons.last_page,
+                onTap: currentPage < totalPages
+                    ? () => _goToPage(totalPages, totalPages)
+                    : null,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Render up to 5 page-number chips centred around [current].
+  List<Widget> _pageChips(int current, int total) {
+    int start = (current - 2).clamp(1, total);
+    int end = (start + 4).clamp(1, total);
+    start = (end - 4).clamp(1, total);
+
+    final chips = <Widget>[];
+
+    // Leading ellipsis
+    if (start > 1) {
+      chips.add(_pageNumBtn(1, current, total));
+      if (start > 2) chips.add(_ellipsis());
+    }
+
+    for (int p = start; p <= end; p++) {
+      chips.add(_pageNumBtn(p, current, total));
+    }
+
+    // Trailing ellipsis
+    if (end < total) {
+      if (end < total - 1) chips.add(_ellipsis());
+      chips.add(_pageNumBtn(total, current, total));
+    }
+
+    return chips;
+  }
+
+  Widget _ellipsis() => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 2),
+    child:
+    Text('…', style: TextStyle(color: Colors.grey[400], fontSize: 13)),
+  );
+
+  Widget _pageNumBtn(int page, int current, int totalPages) {
+    final active = page == current;
+    return GestureDetector(
+      onTap: active ? null : () => _goToPage(page, totalPages),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        margin: const EdgeInsets.symmetric(horizontal: 2),
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: active ? AppTheme.primaryBlue : Colors.transparent,
+          border: Border.all(
+            color: active ? AppTheme.primaryBlue : Colors.grey[300]!,
+          ),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Center(
+          child: Text(
+            '$page',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: active ? FontWeight.bold : FontWeight.normal,
+              color: active ? Colors.white : AppTheme.textPrimary,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _navBtn({required IconData icon, VoidCallback? onTap}) {
+    final enabled = onTap != null;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 32,
+        height: 32,
+        margin: const EdgeInsets.symmetric(horizontal: 2),
+        decoration: BoxDecoration(
+          border: Border.all(
+              color: enabled ? Colors.grey[300]! : Colors.grey[200]!),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Icon(
+          icon,
+          size: 18,
+          color: enabled ? AppTheme.textPrimary : Colors.grey[350],
+        ),
+      ),
+    );
+  }
+
+  // ── Search bar ──────────────────────────────────────────────────────────
+
+  Widget _buildSearchBar() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      child: TextField(
+        controller: _searchCtrl,
+        decoration: InputDecoration(
+          hintText: 'Cari No. KK atau Nama Kepala Keluarga...',
+          prefixIcon:
+          const Icon(Icons.search, color: AppTheme.primaryBlue),
+          suffixIcon: _search.isNotEmpty
+              ? IconButton(
+            icon: const Icon(Icons.clear),
+            onPressed: () {
+              _searchCtrl.clear();
+              setState(() {
+                _search = '';
+                _currentPage = 1;
+              });
+            },
+          )
+              : null,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        onChanged: (v) => setState(() {
+          _search = v.toLowerCase();
+          _currentPage = 1;
+        }),
+      ),
+    );
+  }
+
+  // ── Filter chip ─────────────────────────────────────────────────────────
+
+  Widget _buildFilterChip() {
+    return Container(
+      width: double.infinity,
+      color: Colors.white,
+      padding: const EdgeInsets.only(left: 16, bottom: 8),
+      child: Wrap(
+        children: [
+          Chip(
+            label: Text('Dusun: $_filterDusun'),
+            deleteIcon: const Icon(Icons.close, size: 14),
+            onDeleted: () {
+              setState(() {
+                _filterDusun = null;
+                _currentPage = 1;
+              });
+              _refreshList();
+            },
+            backgroundColor: AppTheme.primaryBlue.withOpacity(0.1),
+            labelStyle: const TextStyle(
+                color: AppTheme.primaryBlue, fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Card ─────────────────────────────────────────────────────────────────
+
   Widget _buildCard(Questionnaire q) {
     final kk = q.kepalaKeluarga;
     final ps = PermissionsService.instance;
-
-    // Label lokasi: dusun (teks bebas) jika ada, fallback ke nama desa
     final lokasiLabel = (q.dusun != null && q.dusun!.isNotEmpty)
         ? q.dusun!
         : (q.wilayah.namaDesa ?? '-');
@@ -185,20 +430,16 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       shape:
       RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 2,
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) =>
-                KuesionerDetailScreen(questionnaire: q),
-          ),
-        ),
+        onTap: () => _openDetail(q),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // ── Header ─────────────────────────────────────────────────
               Row(
                 children: [
                   Container(
@@ -225,21 +466,25 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
                           ),
                         ),
                         const SizedBox(height: 2),
-                        Text('No. KK: ${q.r102}',
-                            style: const TextStyle(
-                                fontSize: 12,
-                                color: AppTheme.textSecondary)),
+                        Text(
+                          'No. KK: ${q.r102}',
+                          style: const TextStyle(
+                              fontSize: 12, color: AppTheme.textSecondary),
+                        ),
                       ],
                     ),
                   ),
                   _buildDusunBadge(lokasiLabel),
                 ],
               ),
-              const Divider(height: 20),
+
+              const Divider(height: 16),
+
+              // ── Stats ───────────────────────────────────────────────────
               Row(
                 children: [
-                  _infoChip(Icons.people_outline,
-                      '${q.jumlahAnggota} anggota'),
+                  _infoChip(
+                      Icons.people_outline, '${q.jumlahAnggota} anggota'),
                   const SizedBox(width: 8),
                   _infoChip(Icons.male, '${q.jumlahLakiLaki} L'),
                   const SizedBox(width: 8),
@@ -247,95 +492,76 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
                   const Spacer(),
                   Text(q.namaPetugas,
                       style: const TextStyle(
-                          fontSize: 11,
-                          color: AppTheme.textSecondary)),
+                          fontSize: 11, color: AppTheme.textSecondary)),
                 ],
               ),
+
               if (q.createdAt != null) ...[
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 Text(_formatDate(q.createdAt!),
-                    style: TextStyle(
-                        fontSize: 11, color: Colors.grey[400])),
+                    style: TextStyle(fontSize: 11, color: Colors.grey[400])),
               ],
 
-              // ── Tombol aksi ───────────────────────────────────────────
               const SizedBox(height: 10),
+
+              // ── Action buttons ──────────────────────────────────────────
               Row(
-                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  OutlinedButton.icon(
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            KuesionerDetailScreen(questionnaire: q),
+                  // Detail — always visible
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _openDetail(q),
+                      icon: const Icon(Icons.visibility_outlined, size: 15),
+                      label: const Text('Detail',
+                          style: TextStyle(fontSize: 12)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppTheme.primaryBlue,
+                        side: const BorderSide(color: AppTheme.primaryBlue),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8)),
                       ),
-                    ),
-                    icon: const Icon(Icons.visibility_outlined,
-                        size: 16),
-                    label: const Text('Detail',
-                        style: TextStyle(fontSize: 12)),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppTheme.primaryBlue,
-                      side:
-                      const BorderSide(color: AppTheme.primaryBlue),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
-                      minimumSize: Size.zero,
-                      tapTargetSize:
-                      MaterialTapTargetSize.shrinkWrap,
                     ),
                   ),
 
+                  // Edit
                   if (ps.can(AppFeatures.questionnaireEdit)) ...[
                     const SizedBox(width: 8),
-                    ElevatedButton.icon(
-                      onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              KuesionerFormScreen(existingData: q),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => _openEdit(q),
+                        icon: const Icon(Icons.edit_outlined, size: 15),
+                        label: const Text('Edit',
+                            style: TextStyle(fontSize: 12)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryBlue,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8)),
+                          elevation: 0,
                         ),
-                      ).then((result) {
-                        if (result == true) {
-                          context
-                              .read<QuestionnaireProvider>()
-                              .loadQuestionnaires(
-                              dusun: _filterDusun);
-                        }
-                      }),
-                      icon: const Icon(Icons.edit_outlined, size: 16),
-                      label: const Text('Edit',
-                          style: TextStyle(fontSize: 12)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryBlue,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
-                        minimumSize: Size.zero,
-                        tapTargetSize:
-                        MaterialTapTargetSize.shrinkWrap,
-                        elevation: 0,
                       ),
                     ),
                   ],
 
-                  if (ps.can(AppFeatures.questionnaireDelete)) ...[
+                  // Hapus — shown when user has delete OR edit permission
+                  if (ps.can(AppFeatures.questionnaireDelete) ||
+                      ps.can(AppFeatures.questionnaireEdit)) ...[
                     const SizedBox(width: 8),
-                    OutlinedButton.icon(
-                      onPressed: () => _confirmDelete(q),
-                      icon: const Icon(Icons.delete_outline, size: 16),
-                      label: const Text('Hapus',
-                          style: TextStyle(fontSize: 12)),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppTheme.accentRed,
-                        side: const BorderSide(
-                            color: AppTheme.accentRed),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
-                        minimumSize: Size.zero,
-                        tapTargetSize:
-                        MaterialTapTargetSize.shrinkWrap,
+                    SizedBox(
+                      height: 36,
+                      width: 36,
+                      child: OutlinedButton(
+                        onPressed: () => _confirmDelete(q),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppTheme.accentRed,
+                          side: const BorderSide(color: AppTheme.accentRed),
+                          padding: EdgeInsets.zero,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8)),
+                        ),
+                        child: const Icon(Icons.delete_outline, size: 16),
                       ),
                     ),
                   ],
@@ -347,6 +573,27 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
       ),
     );
   }
+
+  // ── Navigation helpers ───────────────────────────────────────────────────
+
+  void _openDetail(Questionnaire q) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+          builder: (_) => KuesionerDetailScreen(questionnaire: q)),
+    );
+  }
+
+  Future<void> _openEdit(Questionnaire q) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+          builder: (_) => KuesionerFormScreen(existingData: q)),
+    );
+    if (result == true) _refreshList();
+  }
+
+  // ── Delete dialog ────────────────────────────────────────────────────────
 
   void _confirmDelete(Questionnaire q) {
     final namaKk = q.kepalaKeluarga?.r201 ?? 'responden ini';
@@ -383,20 +630,19 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
                     color: AppTheme.accentRed.withOpacity(0.25)),
               ),
               child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(namaKk,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14)),
-                    const SizedBox(height: 2),
-                    Text(
-                      'No. KK: ${q.r102}  ·  $lokasiLabel',
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(namaKk,
                       style: const TextStyle(
-                          fontSize: 12,
-                          color: AppTheme.textSecondary),
-                    ),
-                  ]),
+                          fontWeight: FontWeight.bold, fontSize: 14)),
+                  const SizedBox(height: 2),
+                  Text(
+                    'No. KK: ${q.r102}  ·  $lokasiLabel',
+                    style: const TextStyle(
+                        fontSize: 12, color: AppTheme.textSecondary),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 10),
             const Text('Tindakan ini tidak dapat dibatalkan.',
@@ -413,10 +659,8 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
           ElevatedButton.icon(
             onPressed: () async {
               Navigator.pop(ctx);
-              final prov =
-              context.read<QuestionnaireProvider>();
-              final ok =
-              await prov.deleteQuestionnaire(q);
+              final prov = context.read<QuestionnaireProvider>();
+              final ok = await prov.deleteQuestionnaire(q);
               if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                 content: Text(ok
@@ -438,67 +682,9 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
     );
   }
 
-  /// Badge dusun — dusun sekarang teks bebas, tidak ada lookup ke dusunOptions
-  Widget _buildDusunBadge(String label) {
-    if (label == '-' || label.isEmpty) return const SizedBox.shrink();
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppTheme.primaryBlue.withOpacity(0.10),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
-          color: AppTheme.primaryBlue,
-        ),
-      ),
-    );
-  }
-
-  Widget _infoChip(IconData icon, String label) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Icon(icon, size: 12, color: AppTheme.textSecondary),
-      const SizedBox(width: 3),
-      Text(label,
-          style: const TextStyle(
-              fontSize: 11, color: AppTheme.textSecondary)),
-    ],
-  );
-
-  Widget _buildEmpty() => Center(
-    child: Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(Icons.assignment_outlined, size: 72, color: Colors.grey[300]),
-        const SizedBox(height: 16),
-        Text(
-          _search.isNotEmpty
-              ? 'Tidak ada hasil pencarian'
-              : 'Belum ada data kuesioner',
-          style: TextStyle(color: Colors.grey[500], fontSize: 16),
-        ),
-        const SizedBox(height: 8),
-        Text('Tekan tombol + untuk menambah pendataan baru',
-            style: TextStyle(color: Colors.grey[400], fontSize: 13)),
-      ],
-    ),
-  );
-
-  String _formatDate(DateTime dt) {
-    final months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
-      'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'
-    ];
-    return '${dt.day} ${months[dt.month - 1]} ${dt.year},'
-        ' ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-  }
+  // ── Filter bottom sheet ──────────────────────────────────────────────────
 
   void _showFilter() {
-    // Kumpulkan daftar dusun unik dari data yang ada
     final dusunList = context
         .read<QuestionnaireProvider>()
         .questionnaires
@@ -531,34 +717,108 @@ class _KuesionerListScreenState extends State<KuesionerListScreen> {
                 groupValue: _filterDusun,
                 activeColor: AppTheme.primaryBlue,
                 onChanged: (v) {
-                  setState(() => _filterDusun = v);
+                  setState(() {
+                    _filterDusun = v;
+                    _currentPage = 1;
+                  });
                   Navigator.pop(ctx);
-                  context
-                      .read<QuestionnaireProvider>()
-                      .loadQuestionnaires();
+                  _refreshList();
                 },
               ),
             ),
-            ...dusunList.map(
-                  (d) => ListTile(
-                title: Text(d),
-                leading: Radio<String?>(
-                  value: d,
-                  groupValue: _filterDusun,
-                  activeColor: AppTheme.primaryBlue,
-                  onChanged: (v) {
-                    setState(() => _filterDusun = v);
-                    Navigator.pop(ctx);
-                    context
-                        .read<QuestionnaireProvider>()
-                        .loadQuestionnaires(dusun: v);
-                  },
+            if (dusunList.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Text('Belum ada data dusun',
+                    style: TextStyle(color: Colors.grey[400])),
+              )
+            else
+              ...dusunList.map(
+                    (d) => ListTile(
+                  title: Text(d),
+                  leading: Radio<String?>(
+                    value: d,
+                    groupValue: _filterDusun,
+                    activeColor: AppTheme.primaryBlue,
+                    onChanged: (v) {
+                      setState(() {
+                        _filterDusun = v;
+                        _currentPage = 1;
+                      });
+                      Navigator.pop(ctx);
+                      _refreshList();
+                    },
+                  ),
                 ),
               ),
-            ),
           ],
         ),
       ),
     );
+  }
+
+  // ── Empty state ──────────────────────────────────────────────────────────
+
+  Widget _buildEmpty() => Center(
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.assignment_outlined,
+            size: 72, color: Colors.grey[300]),
+        const SizedBox(height: 16),
+        Text(
+          _search.isNotEmpty
+              ? 'Tidak ada hasil pencarian'
+              : 'Belum ada data kuesioner',
+          style: TextStyle(color: Colors.grey[500], fontSize: 16),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Tekan tombol + untuk menambah pendataan baru',
+          style: TextStyle(color: Colors.grey[400], fontSize: 13),
+        ),
+      ],
+    ),
+  );
+
+  // ── Small helpers ────────────────────────────────────────────────────────
+
+  Widget _buildDusunBadge(String label) {
+    if (label == '-' || label.isEmpty) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppTheme.primaryBlue.withOpacity(0.10),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+          color: AppTheme.primaryBlue,
+        ),
+      ),
+    );
+  }
+
+  Widget _infoChip(IconData icon, String label) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Icon(icon, size: 12, color: AppTheme.textSecondary),
+      const SizedBox(width: 3),
+      Text(label,
+          style: const TextStyle(
+              fontSize: 11, color: AppTheme.textSecondary)),
+    ],
+  );
+
+  String _formatDate(DateTime dt) {
+    final months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+      'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'
+    ];
+    return '${dt.day} ${months[dt.month - 1]} ${dt.year},'
+        ' ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
   }
 }
