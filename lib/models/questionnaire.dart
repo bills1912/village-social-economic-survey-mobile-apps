@@ -1,5 +1,5 @@
 // lib/models/questionnaire.dart
-// Model yang sesuai dengan struktur database dari backend PHP/Filament
+import 'wilayah.dart';
 
 class AnggotaKeluarga {
   final String? r201;
@@ -18,10 +18,7 @@ class AnggotaKeluarga {
   final String? r300Pekerjaan;
   final List<PekerjaanData>? pekerjaan;
 
-  // ── Detail pekerjaan (semua field dari form) ──────────────────────────────
-  final String? r301UsahaBuruhPekerjaBebas; // tipe: 1=usaha, 2=buruh, 3=pekerja bebas
-
-  // Usaha
+  final String? r301UsahaBuruhPekerjaBebas;
   final String? r301;
   final String? r302a; final String? r302b; final String? r302c;
   final String? r302d; final String? r302e; final String? r302f; final String? r302g;
@@ -30,8 +27,6 @@ class AnggotaKeluarga {
   final String? r304a; final String? r304b; final String? r304c; final String? r304d;
   final String? r305a; final String? r305b; final String? r305c;
   final String? r305d; final String? r305e; final String? r305f;
-
-  // Usaha tambahan
   final String? r306; final String? r301Tambah;
   final String? r302aTambah; final String? r302bTambah; final String? r302cTambah;
   final String? r302dTambah; final String? r302eTambah; final String? r302fTambah; final String? r302gTambah;
@@ -40,15 +35,11 @@ class AnggotaKeluarga {
   final String? r304aTambah; final String? r304bTambah; final String? r304cTambah; final String? r304dTambah;
   final String? r305aTambah; final String? r305bTambah; final String? r305cTambah;
   final String? r305dTambah; final String? r305eTambah; final String? r305fTambah;
-
-  // Buruh
   final String? r307; final String? r308a; final String? r308b;
   final String? r309a; final String? r309b; final String? r310;
   final String? r307Tambah;
   final String? r308aTambah; final String? r308bTambah;
   final String? r309aTambah; final String? r309bTambah;
-
-  // Pekerja bebas
   final String? r311; final String? r312a; final String? r312b;
   final String? r313a; final String? r313b; final String? r314;
   final String? r311Tambah;
@@ -59,8 +50,7 @@ class AnggotaKeluarga {
     this.r201, this.r202, this.r203, this.r204, this.r205,
     this.r206, this.r207, this.r207Usia, this.r208, this.r209,
     this.r210, this.r211, this.r212, this.r300Pekerjaan, this.pekerjaan,
-    this.r301UsahaBuruhPekerjaBebas,
-    this.r301,
+    this.r301UsahaBuruhPekerjaBebas, this.r301,
     this.r302a, this.r302b, this.r302c, this.r302d, this.r302e, this.r302f, this.r302g,
     this.r303a, this.r303b, this.r303c, this.r303d, this.r303e,
     this.r304a, this.r304b, this.r304c, this.r304d,
@@ -79,22 +69,13 @@ class AnggotaKeluarga {
 
   factory AnggotaKeluarga.fromJson(Map<String, dynamic> json) {
     return AnggotaKeluarga(
-      r201: json['r_201'],
-      r202: json['r_202'],
-      r203: json['r_203'],
-      r204: json['r_204'],
-      r205: json['r_205'],
-      r206: json['r_206'],
-      r207: json['r_207'],
-      r207Usia: json['r_207_usia'],
-      r208: json['r_208'],
-      r209: json['r_209'],
-      r210: json['r_210'],
+      r201: json['r_201'], r202: json['r_202'], r203: json['r_203'],
+      r204: json['r_204'], r205: json['r_205'], r206: json['r_206'],
+      r207: json['r_207'], r207Usia: json['r_207_usia'],
+      r208: json['r_208'], r209: json['r_209'], r210: json['r_210'],
       r211: json['r_211'] != null ? List<String>.from(json['r_211']) : null,
-      r212: json['r_212'],
-      r300Pekerjaan: json['r_300_pekerjaan'],
+      r212: json['r_212'], r300Pekerjaan: json['r_300_pekerjaan'],
       r301UsahaBuruhPekerjaBebas: json['r_301_usaha_buruh_pekerjaBebas'],
-      // Usaha
       r301: json['r_301'],
       r302a: json['r_302_a'], r302b: json['r_302_b'], r302c: json['r_302_c'],
       r302d: json['r_302_d'], r302e: json['r_302_e'], r302f: json['r_302_f'], r302g: json['r_302_g'],
@@ -113,13 +94,11 @@ class AnggotaKeluarga {
       r304cTambah: json['r_304_c_tambah'], r304dTambah: json['r_304_d_tambah'],
       r305aTambah: json['r_305_a_tambah'], r305bTambah: json['r_305_b_tambah'], r305cTambah: json['r_305_c_tambah'],
       r305dTambah: json['r_305_d_tambah'], r305eTambah: json['r_305_e_tambah'], r305fTambah: json['r_305_f_tambah'],
-      // Buruh
       r307: json['r_307'], r308a: json['r_308_a'], r308b: json['r_308_b'],
       r309a: json['r_309_a'], r309b: json['r_309_b'], r310: json['r_310'],
       r307Tambah: json['r_307_tambah'],
       r308aTambah: json['r_308_a_tambah'], r308bTambah: json['r_308_b_tambah'],
       r309aTambah: json['r_309_a_tambah'], r309bTambah: json['r_309_b_tambah'],
-      // Pekerja bebas
       r311: json['r_311'], r312a: json['r_312_a'], r312b: json['r_312_b'],
       r313a: json['r_313_a'], r313b: json['r_313_b'], r314: json['r_314'],
       r311Tambah: json['r_311_tambah'],
@@ -133,16 +112,12 @@ class AnggotaKeluarga {
     'r_205': r205, 'r_206': r206, 'r_207': r207, 'r_207_usia': r207Usia,
     'r_208': r208, 'r_209': r209, 'r_210': r210, 'r_211': r211,
     'r_212': r212, 'r_300_pekerjaan': r300Pekerjaan,
-    'r_301_usaha_buruh_pekerjaBebas': r301UsahaBuruhPekerjaBebas,
-    // Usaha
-    'r_301': r301,
+    'r_301_usaha_buruh_pekerjaBebas': r301UsahaBuruhPekerjaBebas, 'r_301': r301,
     'r_302_a': r302a, 'r_302_b': r302b, 'r_302_c': r302c,
     'r_302_d': r302d, 'r_302_e': r302e, 'r_302_f': r302f, 'r_302_g': r302g,
-    'r_303_a': r303a, 'r_303_b': r303b, 'r_303_c': r303c,
-    'r_303_d': r303d, 'r_303_e': r303e,
+    'r_303_a': r303a, 'r_303_b': r303b, 'r_303_c': r303c, 'r_303_d': r303d, 'r_303_e': r303e,
     'r_304_a': r304a, 'r_304_b': r304b, 'r_304_c': r304c, 'r_304_d': r304d,
-    'r_305_a': r305a, 'r_305_b': r305b, 'r_305_c': r305c,
-    'r_305_d': r305d, 'r_305_e': r305e, 'r_305_f': r305f,
+    'r_305_a': r305a, 'r_305_b': r305b, 'r_305_c': r305c, 'r_305_d': r305d, 'r_305_e': r305e, 'r_305_f': r305f,
     'r_306': r306, 'r_301_tambah': r301Tambah,
     'r_302_a_tambah': r302aTambah, 'r_302_b_tambah': r302bTambah, 'r_302_c_tambah': r302cTambah,
     'r_302_d_tambah': r302dTambah, 'r_302_e_tambah': r302eTambah,
@@ -153,21 +128,16 @@ class AnggotaKeluarga {
     'r_304_c_tambah': r304cTambah, 'r_304_d_tambah': r304dTambah,
     'r_305_a_tambah': r305aTambah, 'r_305_b_tambah': r305bTambah, 'r_305_c_tambah': r305cTambah,
     'r_305_d_tambah': r305dTambah, 'r_305_e_tambah': r305eTambah, 'r_305_f_tambah': r305fTambah,
-    // Buruh
     'r_307': r307, 'r_308_a': r308a, 'r_308_b': r308b,
-    'r_309_a': r309a, 'r_309_b': r309b, 'r_310': r310,
-    'r_307_tambah': r307Tambah,
+    'r_309_a': r309a, 'r_309_b': r309b, 'r_310': r310, 'r_307_tambah': r307Tambah,
     'r_308_a_tambah': r308aTambah, 'r_308_b_tambah': r308bTambah,
     'r_309_a_tambah': r309aTambah, 'r_309_b_tambah': r309bTambah,
-    // Pekerja bebas
     'r_311': r311, 'r_312_a': r312a, 'r_312_b': r312b,
-    'r_313_a': r313a, 'r_313_b': r313b, 'r_314': r314,
-    'r_311_tambah': r311Tambah,
+    'r_313_a': r313a, 'r_313_b': r313b, 'r_314': r314, 'r_311_tambah': r311Tambah,
     'r_312_a_tambah': r312aTambah, 'r_312_b_tambah': r312bTambah,
     'r_313_a_tambah': r313aTambah, 'r_313_b_tambah': r313bTambah,
   };
 
-  // Helper getters
   String get namaLengkap => r201 ?? '-';
   String get jenisKelaminLabel => r205 == '1' ? 'Laki-laki' : r205 == '2' ? 'Perempuan' : '-';
   String get statusKeluargaLabel {
@@ -198,18 +168,10 @@ class PekerjaanData {
   final String? tipe;
   final String? sektor;
   final Map<String, dynamic>? detailData;
-
   PekerjaanData({this.tipe, this.sektor, this.detailData});
-
-  factory PekerjaanData.fromJson(Map<String, dynamic> json) => PekerjaanData(
-    tipe: json['tipe'],
-    sektor: json['sektor'],
-    detailData: json['detail'],
-  );
-
-  Map<String, dynamic> toJson() => {
-    'tipe': tipe, 'sektor': sektor, 'detail': detailData,
-  };
+  factory PekerjaanData.fromJson(Map<String, dynamic> json) =>
+      PekerjaanData(tipe: json['tipe'], sektor: json['sektor'], detailData: json['detail']);
+  Map<String, dynamic> toJson() => {'tipe': tipe, 'sektor': sektor, 'detail': detailData};
 }
 
 class Questionnaire {
@@ -219,7 +181,13 @@ class Questionnaire {
   final String? kelompokDasaWisma;
   final Map<String, dynamic>? lokasiRumah;
   final String? waktuPendataan;
-  final String dusun;
+
+  // ── Wilayah (baru) ─────────────────────────────────────────────────────────
+  final WilayahSnapshot wilayah;
+
+  /// Dusun: teks bebas, opsional
+  final String? dusun;
+
   final String r102;
   final String? r103;
   final String? r104;
@@ -235,7 +203,8 @@ class Questionnaire {
     this.kelompokDasaWisma,
     this.lokasiRumah,
     this.waktuPendataan,
-    required this.dusun,
+    WilayahSnapshot? wilayah,
+    this.dusun,
     required this.r102,
     this.r103,
     this.r104,
@@ -243,36 +212,31 @@ class Questionnaire {
     this.r401,
     this.createdAt,
     this.updatedAt,
-  });
+  }) : wilayah = wilayah ?? WilayahSnapshot.empty;
 
   factory Questionnaire.fromJson(Map<String, dynamic> json) {
     List<AnggotaKeluarga> anggota = [];
-    if (json['r_200'] != null) {
-      if (json['r_200'] is List) {
-        anggota = (json['r_200'] as List)
-            .map((e) => AnggotaKeluarga.fromJson(e as Map<String, dynamic>))
-            .toList();
-      }
+    if (json['r_200'] is List) {
+      anggota = (json['r_200'] as List)
+          .map((e) => AnggotaKeluarga.fromJson(e as Map<String, dynamic>))
+          .toList();
     }
     return Questionnaire(
-      id: json["id"]?.toString(),
+      id: json['id']?.toString(),
       surveyId: json['survey_id']?.toString(),
       namaPetugas: json['nama_petugas'] ?? '',
       kelompokDasaWisma: json['kelompok_dasa_wisma'],
       lokasiRumah: json['lokasi_rumah'],
       waktuPendataan: json['waktu_pendataan'],
-      dusun: json['dusun'] ?? '',
+      wilayah: WilayahSnapshot.fromJson(json),
+      dusun: json['dusun']?.toString(),
       r102: json['r_102'] ?? '',
       r103: json['r_103'],
       r104: json['r_104'],
       r200: anggota,
       r401: json['r_401'],
-      createdAt: json['created_at'] != null
-          ? DateTime.tryParse(json['created_at'])
-          : null,
-      updatedAt: json['updated_at'] != null
-          ? DateTime.tryParse(json['updated_at'])
-          : null,
+      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at']) : null,
+      updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at']) : null,
     );
   }
 
@@ -283,6 +247,7 @@ class Questionnaire {
     'kelompok_dasa_wisma': kelompokDasaWisma,
     'lokasi_rumah': lokasiRumah,
     'waktu_pendataan': waktuPendataan,
+    ...wilayah.toJson(),
     'dusun': dusun,
     'r_102': r102,
     'r_103': r103,
@@ -291,23 +256,17 @@ class Questionnaire {
     'r_401': r401,
   };
 
-  // Helpers
-  String get dusunLabel {
-    switch (dusun) {
-      case '1': return 'Dusun I-A';
-      case '2': return 'Dusun I-B';
-      case '3': return 'Dusun II Timur';
-      case '4': return 'Dusun II Barat';
-      case '5': return 'Dusun III';
-      case '6': return 'Dusun IV';
-      default: return 'Dusun $dusun';
-    }
-  }
+  // ── Helpers ────────────────────────────────────────────────────────────────
 
+  /// Nama desa atau fallback ke '-'
+  String get namaDesa => wilayah.namaDesa ?? '-';
+
+  /// Label untuk status KK, menyesuaikan nama desa
   String get statusKkLabel {
+    final desa = wilayah.namaDesa ?? 'Desa';
     switch (r103) {
-      case '1': return 'KK Suka Makmur';
-      case '2': return 'Bukan KK Suka Makmur';
+      case '1': return 'KK $desa';
+      case '2': return 'Bukan KK $desa';
       case '3': return 'Belum Punya KK';
       default: return '-';
     }
@@ -323,12 +282,13 @@ class Questionnaire {
   int get jumlahPerempuan => r200.where((a) => a.r205 == '2').length;
 }
 
-// Statistik Desa
+// ── Statistik Desa ────────────────────────────────────────────────────────────
 class StatistikDesa {
   final int totalKK;
   final int totalPenduduk;
   final int totalLakiLaki;
   final int totalPerempuan;
+  final Map<String, int> perDesa;
   final Map<String, int> perDusun;
   final Map<String, int> perPendidikan;
   final Map<String, int> perPekerjaan;
@@ -339,6 +299,7 @@ class StatistikDesa {
     required this.totalPenduduk,
     required this.totalLakiLaki,
     required this.totalPerempuan,
+    required this.perDesa,
     required this.perDusun,
     required this.perPendidikan,
     required this.perPekerjaan,

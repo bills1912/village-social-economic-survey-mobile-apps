@@ -1,7 +1,6 @@
 // lib/providers/questionnaire_provider.dart
 import 'package:flutter/foundation.dart';
 import '../models/questionnaire.dart';
-import '../models/user.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
 
@@ -10,7 +9,6 @@ class QuestionnaireProvider with ChangeNotifier {
   bool _isLoading = false;
   bool _isSaving = false;
   String? _error;
-  String? _filterDusun;
   int _pendingCount = 0;
   Map<String, dynamic> _stats = {};
 
@@ -18,17 +16,31 @@ class QuestionnaireProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isSaving => _isSaving;
   String? get error => _error;
-  String? get filterDusun => _filterDusun;
   int get pendingCount => _pendingCount;
   Map<String, dynamic> get stats => _stats;
 
-  // surveyId sekarang String? (MongoDB ObjectId)
-  Future<void> loadQuestionnaires({String? dusun, String? surveyId}) async {
+  Future<void> loadQuestionnaires({
+    // Wilayah filters
+    String? kodeProvinsi,
+    String? kodeKabupaten,
+    String? kodeKecamatan,
+    String? kodeDesa,
+    String? namaDesa,
+    // Dusun sub-filter
+    String? dusun,
+    // Legacy
+    String? surveyId,
+  }) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
     try {
       _questionnaires = await ApiService.instance.getQuestionnaires(
+        kodeProvinsi: kodeProvinsi,
+        kodeKabupaten: kodeKabupaten,
+        kodeKecamatan: kodeKecamatan,
+        kodeDesa: kodeDesa,
+        namaDesa: namaDesa,
         dusun: dusun,
         surveyId: surveyId,
       );
@@ -42,9 +54,16 @@ class QuestionnaireProvider with ChangeNotifier {
     }
   }
 
-  Future<void> loadStats({String? dusun, String? surveyId}) async {
+  Future<void> loadStats({
+    String? kodeDesa,
+    String? namaDesa,
+    String? dusun,
+    String? surveyId,
+  }) async {
     try {
       _stats = await ApiService.instance.getStatistics(
+        kodeDesa: kodeDesa,
+        namaDesa: namaDesa,
         dusun: dusun,
         surveyId: surveyId,
       );
@@ -54,9 +73,7 @@ class QuestionnaireProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> saveQuestionnaire(Questionnaire q,
-      {bool offlineFirst = false}) async {
-    // Jika ada id → route ke updateQuestionnaire
+  Future<bool> saveQuestionnaire(Questionnaire q, {bool offlineFirst = false}) async {
     if (q.id != null && q.id!.isNotEmpty) {
       return updateQuestionnaire(q, offlineFirst: offlineFirst);
     }
@@ -68,7 +85,6 @@ class QuestionnaireProvider with ChangeNotifier {
       if (!hasConn || offlineFirst) {
         await StorageService.instance.saveQuestionnaire(q, isSynced: false);
         _pendingCount = await StorageService.instance.getPendingCount();
-        // Refresh list dari local storage agar langsung muncul
         _questionnaires = await StorageService.instance.getAllLocalQuestionnaires();
         _isSaving = false;
         notifyListeners();
@@ -81,7 +97,6 @@ class QuestionnaireProvider with ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      // Fallback ke offline
       try {
         await StorageService.instance.saveQuestionnaire(q, isSynced: false);
         _pendingCount = await StorageService.instance.getPendingCount();
@@ -98,9 +113,7 @@ class QuestionnaireProvider with ChangeNotifier {
     }
   }
 
-  /// Update kuesioner yang sudah ada (edit)
-  Future<bool> updateQuestionnaire(Questionnaire q,
-      {bool offlineFirst = false}) async {
+  Future<bool> updateQuestionnaire(Questionnaire q, {bool offlineFirst = false}) async {
     _isSaving = true;
     _error = null;
     notifyListeners();
@@ -109,25 +122,20 @@ class QuestionnaireProvider with ChangeNotifier {
       if (!hasConn || offlineFirst) {
         await StorageService.instance.saveQuestionnaire(q, isSynced: false);
         _pendingCount = await StorageService.instance.getPendingCount();
-        // Update item di list in-memory agar langsung tampil
         final idx = _questionnaires.indexWhere((x) => x.id == q.id);
-        if (idx != -1) _questionnaires[idx] = q;
-        else _questionnaires.insert(0, q);
+        if (idx != -1) _questionnaires[idx] = q; else _questionnaires.insert(0, q);
         _isSaving = false;
         notifyListeners();
         return true;
       }
       final updated = await ApiService.instance.updateQuestionnaire(q.id!, q);
       await StorageService.instance.saveQuestionnaire(updated, isSynced: true);
-      // Update in-memory
       final idx = _questionnaires.indexWhere((x) => x.id == updated.id);
-      if (idx != -1) _questionnaires[idx] = updated;
-      else await loadQuestionnaires();
+      if (idx != -1) _questionnaires[idx] = updated; else await loadQuestionnaires();
       _isSaving = false;
       notifyListeners();
       return true;
     } catch (e) {
-      // Fallback offline
       try {
         await StorageService.instance.saveQuestionnaire(q, isSynced: false);
         _pendingCount = await StorageService.instance.getPendingCount();
@@ -145,7 +153,6 @@ class QuestionnaireProvider with ChangeNotifier {
     }
   }
 
-  /// Hapus kuesioner — coba ke server dulu, lalu hapus lokal
   Future<bool> deleteQuestionnaire(Questionnaire q) async {
     _error = null;
     notifyListeners();
@@ -154,9 +161,7 @@ class QuestionnaireProvider with ChangeNotifier {
       if (hasConn && q.id != null && q.id!.isNotEmpty) {
         await ApiService.instance.deleteQuestionnaire(q.id!);
       }
-      // Hapus dari local storage
       await StorageService.instance.deleteLocalQuestionnaire(q.id);
-      // Hapus dari in-memory list langsung (tanpa reload)
       _questionnaires.removeWhere((x) => x.id == q.id);
       _pendingCount = await StorageService.instance.getPendingCount();
       notifyListeners();
@@ -175,30 +180,22 @@ class QuestionnaireProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void setFilterDusun(String? dusun) {
-    _filterDusun = dusun;
-    notifyListeners();
-  }
-
-  List<Questionnaire> get filteredQuestionnaires {
-    if (_filterDusun == null || _filterDusun!.isEmpty) return _questionnaires;
-    return _questionnaires.where((q) => q.dusun == _filterDusun).toList();
-  }
-
-  void clearError() {
-    _error = null;
-    notifyListeners();
-  }
+  void clearError() { _error = null; notifyListeners(); }
 
   StatistikDesa computeLocalStats() {
     final all = _questionnaires;
     int totalPenduduk = 0, totalL = 0, totalP = 0;
+    final perDesa  = <String, int>{};
     final perDusun = <String, int>{};
     final perPendidikan = <String, int>{};
     final perPetugas = <String, int>{};
 
     for (final q in all) {
-      perDusun[q.dusunLabel] = (perDusun[q.dusunLabel] ?? 0) + 1;
+      final desaLabel = q.wilayah.namaDesa ?? 'Tidak Diketahui';
+      perDesa[desaLabel] = (perDesa[desaLabel] ?? 0) + 1;
+      if (q.dusun != null && q.dusun!.isNotEmpty) {
+        perDusun[q.dusun!] = (perDusun[q.dusun!] ?? 0) + 1;
+      }
       perPetugas[q.namaPetugas] = (perPetugas[q.namaPetugas] ?? 0) + 1;
       for (final a in q.r200) {
         totalPenduduk++;
@@ -216,6 +213,7 @@ class QuestionnaireProvider with ChangeNotifier {
       totalPenduduk: totalPenduduk,
       totalLakiLaki: totalL,
       totalPerempuan: totalP,
+      perDesa: perDesa,
       perDusun: perDusun,
       perPendidikan: perPendidikan,
       perPekerjaan: {},
